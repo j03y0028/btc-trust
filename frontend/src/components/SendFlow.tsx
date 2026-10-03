@@ -3,6 +3,7 @@ import { ApiError, btc, deviceApi, deviceName, walletApi, type HwDevice, type Ps
 import { SigRing } from './SigRing'
 import { KindBadge } from './KindBadge'
 import { QrCode } from './QrCode'
+import { RequestSignature } from './RequestSignature'
 
 /** Single-frame QR limit for base64 PSBTs (version 40, low ECC ≈ 2.9 KB; keep margin for scanners). */
 export const QR_MAX = 2200
@@ -22,6 +23,7 @@ export function SendFlow({ wallet, onDone }: { wallet: WalletDetail; onDone: () 
   const [log, setLog] = useState<{ text: string; tone: 'ok' | 'warn' }[]>([])
   const [airgap, setAirgap] = useState(false)
   const [showQr, setShowQr] = useState(false)
+  const [requesting, setRequesting] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
 
   const refreshDevices = useCallback(async () => {
@@ -172,6 +174,7 @@ export function SendFlow({ wallet, onDone }: { wallet: WalletDetail; onDone: () 
 
           <div className="wizard-actions">
             <button className="btn ghost" onClick={() => setPsbt(null)}>Discard</button>
+            {!psbt.complete && wallet.cosigners.length > 1 && <button className="btn ghost" onClick={() => setRequesting(true)} data-testid="request-signature">✉ Request signature</button>}
             <button className="btn primary" disabled={!psbt.complete || !!busy}
               onClick={() => run('broadcast', async () => setTxid((await walletApi.broadcast(wallet.id, psbt.psbt)).txid))}>
               {psbt.complete ? (busy === 'broadcast' ? 'Broadcasting…' : 'Finalize & broadcast') : `Needs ${psbt.required - psbt.signatures} more signature${psbt.required - psbt.signatures > 1 ? 's' : ''}`}
@@ -191,6 +194,7 @@ export function SendFlow({ wallet, onDone }: { wallet: WalletDetail; onDone: () 
       )}
 
       {error && <div className="form-error" role="alert">{error}</div>}
+      {requesting && psbt && <RequestSignature wallet={wallet} psbt={psbt} onClose={() => setRequesting(false)} />}
     </div>
   )
 }

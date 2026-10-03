@@ -99,3 +99,22 @@ describe.skipIf(!hasEmulator)('vault second factor on the Trezor emulator', () =
     expect(v.status).toBe(200);
   });
 });
+
+describe.skipIf(!hasEmulator)('trustee attestation on the Trezor emulator', () => {
+  const rpc = new BitcoinRpc(cfg);
+  const app = createApp(cfg, rpc, new WalletStore(cfg.dataDir, cfg.network), new HwiCliAdapter({ bin: cfg.hwi.bin, network: 'regtest', emulators: true, timeoutMs: 120000 }));
+  it('Trezor signs the messaging-key attestation via HWI signmessage', async () => {
+    const nacl = (await import('tweetnacl')).default;
+    const { newIdentity, signDetached } = await import('../../shared/msgcrypto.js');
+    const fp = (await request(app).get('/api/devices?refresh=1')).body.find((d: any) => d.fingerprint).fingerprint;
+    const w = await request(app).post('/api/wallets').send({ name: 'Trezor Trustee', type: 'multisig', hardware: [{ fingerprint: fp }] });
+    const me = newIdentity(nacl as any, fp);
+    const prep = await request(app).post(`/api/messaging/${w.body.id}/identities/prepare`).send({ cosigner: 0, signPub: me.signPub, boxPub: me.boxPub });
+    expect(prep.body).toMatchObject({ kind: 'hardware', path: 'm/44h/1h/0h/0/0' });
+    const sig = await request(app).post(`/api/messaging/${w.body.id}/identities/sign`).send({ cosigner: 0, statement: prep.body.statement });
+    expect(sig.body.signer).toBe('device');
+    const r = await request(app).post(`/api/messaging/${w.body.id}/identities`).send({ cosigner: 0, signPub: me.signPub, boxPub: me.boxPub, issuedAt: prep.body.issuedAt, btcSignature: sig.body.signature, popSignature: signDetached(nacl as any, me, prep.body.statement) });
+    expect(r.status).toBe(201);
+    expect(r.body).toMatchObject({ kind: 'hardware', verified: true, fingerprint: fp });
+  });
+});

@@ -7,6 +7,8 @@ import { Wallets } from './pages/Wallets'
 import { WalletDetail } from './pages/WalletDetail'
 import { Devices } from './pages/Devices'
 import { VaultIndex, VaultPage } from './pages/Vault'
+import { MessagesIndex, MessagesPage } from './pages/Messages'
+import { UrgentBanner } from './components/UrgentBanner'
 
 const POLL_MS = 5000
 
@@ -40,7 +42,8 @@ export default function App() {
   const query = useQuery(path)
   const walletId = path.match(/^\/wallets\/([^/?]+)/)?.[1]
   const vaultId = path.match(/^\/vault\/([^/?]+)/)?.[1]
-  const section = path.startsWith('/wallets') ? 'wallets' : path.startsWith('/devices') ? 'devices' : path.startsWith('/vault') ? 'vault' : 'dashboard'
+  const msgId = path.match(/^\/messages\/([^/?]+)/)?.[1]
+  const section = path.startsWith('/wallets') ? 'wallets' : path.startsWith('/devices') ? 'devices' : path.startsWith('/vault') ? 'vault' : path.startsWith('/messages') ? 'messages' : 'dashboard'
   const preset = query.new === 'multisig' || query.new === 'singlesig' ? { choice: query.new as 'multisig' | 'singlesig', hw: query.hw } : undefined
 
   return (
@@ -60,6 +63,7 @@ export default function App() {
           <button className={section === 'wallets' ? 'active' : ''} onClick={() => navigate('/wallets')}>Wallets</button>
           <button className={section === 'devices' ? 'active' : ''} onClick={() => navigate('/devices')}>Devices</button>
           <button className={section === 'vault' ? 'active' : ''} onClick={() => navigate('/vault')}>Vault</button>
+          <button className={section === 'messages' ? 'active' : ''} onClick={() => navigate('/messages')}>Messages</button>
         </nav>
         <div className="status">
           {chain && <span className={`net net-${chain.network}`}>{chain.network}</span>}
@@ -71,10 +75,13 @@ export default function App() {
       </header>
 
       {error && <div className="glass alert" role="alert">⚠ {error}</div>}
+      <UrgentBanner path={path} />
 
       <div key={path} className="route">
         {walletId ? <WalletDetail id={walletId} />
           : vaultId ? <VaultPage walletId={vaultId} />
+          : msgId ? <MessagesPage key={msgId + (query.thread ?? '')} walletId={msgId} initialThread={query.thread} />
+          : section === 'messages' ? <MessagesIndex />
           : section === 'vault' ? <VaultIndex />
           : section === 'wallets' ? <Wallets preset={preset} />
           : section === 'devices' ? <Devices />

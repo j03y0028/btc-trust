@@ -2,6 +2,7 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, w
 import { join } from 'node:path';
 import { randomBytes } from 'node:crypto';
 import type { BitcoinRpc } from '../rpc.js';
+import { IdentityKeys } from '../identity.js';
 import { HttpError } from '../errors.js';
 import type { WalletService } from '../wallets.js';
 import { assertNoPrivateKeys, kindOf } from '../wallets.js';
@@ -43,6 +44,7 @@ const newId = () => randomBytes(8).toString('hex');
 export class VaultService {
   private sessions = new Map<string, Session>();
   private pending = new Map<string, Pending>();
+  private ids: IdentityKeys;
   private failures = new Map<string, { count: number; until: number }>();
 
   constructor(
@@ -52,6 +54,7 @@ export class VaultService {
     private faucet: Faucet,
     private opts: { dataDir: string; network: string; idleMs: number; kdfN: number },
   ) {
+    this.ids = new IdentityKeys(rpc, wallets, devices, opts.network);
     mkdirSync(this.dir, { recursive: true });
     setInterval(() => this.sweep(), 15_000).unref();
   }
@@ -104,34 +107,7 @@ export class VaultService {
 
   /** Resolve the signmessage identity key (BIP44 m/44h/coin'/0'/0/0, same seed / master fingerprint) of a cosigner. */
   async resolveSecondFactor(walletId: string, spec: { cosigner?: number; address?: string }): Promise<SecondFactor> {
-    const w = this.wallets.get(walletId);
-    const i = Number(spec.cosigner ?? 0);
-    const c = w.cosigners[i];
-    if (!c) throw new HttpError(400, `No cosigner at index ${i}`);
-    const coin = this.opts.network === 'main' ? 0 : 1;
-    const kind = kindOf(c);
-    let address: string;
-    let path = `m/44h/${coin}h/0h/0/0`;
-    if (kind === 'software') {
-      const { descriptors } = await this.rpc.call<{ descriptors: { desc: string; internal: boolean }[] }>('listdescriptors', [false], c.signerWallet!);
-      const pkh = descriptors.find((d) => d.desc.startsWith('pkh(') && !d.internal);
-      if (!pkh) throw new HttpError(500, 'Cosigner wallet has no pkh identity key');
-      [address] = await this.rpc.call<string[]>('deriveaddresses', [pkh.desc, [0, 0]]);
-      path = `m/${pkh.desc.match(/^pkh\(\[[0-9a-f]{8}\/([^\]]+)\]/)![1]}/0/0`;
-    } else if (kind === 'hardware') {
-      if (!this.devices) throw new HttpError(503, 'HWI is not configured');
-      const xpub = await this.devices.rawXpub(c.fingerprint, `m/44h/${coin}h/0h`);
-      const info = await this.rpc.call<{ descriptor: string }>('getdescriptorinfo', [`pkh(${xpub.xpub}/0/0)`]);
-      [address] = await this.rpc.call<string[]>('deriveaddresses', [info.descriptor]);
-      path = `${xpub.path}/0/0`;
-    } else {
-      if (!spec.address) throw new HttpError(400, 'Air-gapped cosigners need a P2PKH address that you can sign messages with');
-      address = spec.address.trim();
-      path = 'external';
-    }
-    const v = await this.rpc.call<{ isvalid: boolean; isscript?: boolean; iswitness?: boolean }>('validateaddress', [address]);
-    if (!v.isvalid || v.isscript || v.iswitness) throw new HttpError(400, 'Second factor needs a legacy P2PKH address (signmessage-compatible)');
-    return { cosigner: i, label: c.label, kind, fingerprint: c.fingerprint, address, path };
+    return this.ids.resolve(walletId, spec);
   }
 
   async create(walletId: string, body: { passphrase?: string; secondFactor?: { cosigner?: number; address?: string } | null }) {
@@ -207,26 +183,13 @@ export class VaultService {
   /** Convenience: have a key on this node (software cosigner) or a connected hardware wallet sign the challenge. */
   async signChallenge(walletId: string, id: string) {
     const p = this.getPending(walletId, id);
-    const sf = this.read(walletId).secondFactor!;
-    const c = this.wallets.get(walletId).cosigners[sf.cosigner];
-    if (sf.kind === 'software') return { signature: await this.rpc.call<string>('signmessage', [sf.address, p.message], c.signerWallet!), signer: 'node' };
-    if (sf.kind === 'hardware') {
-      if (!this.devices) throw new HttpError(503, 'HWI is not configured');
-      return { signature: await this.devices.signMessage(sf.fingerprint, p.message, sf.path), signer: 'device' };
-    }
-    throw new HttpError(400, 'Sign the challenge with your external wallet (signmessage) and paste the signature');
+    return this.ids.sign(walletId, this.read(walletId).secondFactor!, p.message);
   }
 
   async verifyChallenge(walletId: string, id: string, signature: string) {
     const p = this.getPending(walletId, id);
     const sf = this.read(walletId).secondFactor!;
-    let ok = false;
-    try {
-      ok = await this.rpc.call<boolean>('verifymessage', [sf.address, String(signature ?? '').trim(), p.message]);
-    } catch {
-      ok = false;
-    }
-    if (!ok) {
+    if (!(await this.ids.verify(sf.address, signature, p.message))) {
       if (++p.attempts >= 3) this.pending.delete(id);
       throw new HttpError(401, 'Signature does not prove control of the second-factor key', { code: 'BAD_SIGNATURE' });
     }

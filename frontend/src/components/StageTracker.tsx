@@ -6,7 +6,7 @@ export const DEFAULT_STAGES: Stage[] = [
   { id: 2, title: 'Multisig Wallet', description: '2-of-3 P2WSH descriptor wallet', status: 'complete' },
   { id: 3, title: 'Hardware Wallets', description: 'PSBT + HWI support', status: 'complete' },
   { id: 4, title: 'Trust Vault', description: 'Encrypted trust documentation', status: 'complete' },
-  { id: 5, title: 'Trustee Messaging', description: 'Private trustee channel', status: 'planned' },
+  { id: 5, title: 'Trustee Messaging', description: 'Private trustee channel', status: 'complete' },
   { id: 6, title: 'Timeline & Goals', description: 'Economy milestones + white paper', status: 'planned' },
 ]
 

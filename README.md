@@ -60,6 +60,12 @@ screenshots/stage1.png
 | `POST\|GET …/documents/:docId/attachments[/:attId]` | encrypted PDF/PNG/JPEG/GIF/WebP files (raw body, `x-filename`), max 10 MB |
 | `POST /api/vaults/:walletId/{passphrase,second-factor}` | re-encrypt with a new passphrase / set or clear the wallet-signature factor |
 | `GET /api/vaults/:walletId/backup`, `POST …/restore` | export the encrypted backup (still ciphertext) / verify and restore it `{backup, passphrase, overwrite?}` |
+| `GET /api/messaging/:walletId/directory` | trustees, attested identities (verified, safety number), previous keys |
+| `POST /api/messaging/:walletId/identities[/prepare\|/sign]` | build, sign (node/device) and register a signmessage attestation binding Ed25519/X25519 keys to a cosigner |
+| `GET /api/messaging/:walletId/threads`, `GET\|POST …/threads/:threadId/messages[?since=]`, `POST …/read` | encrypted envelopes (`group` or `dm:<fp>:<fp>`), signed read receipts. Requires `x-trustee-auth` |
+| `GET\|POST /api/messaging/:walletId/sigrequests`, `POST …/sigrequests/:id/{sign,import,broadcast}` | signature requests linked to a PSBT, with live status |
+| `GET /api/messaging/alerts` | unread urgent messages (metadata only) for the escalation banner |
+| `WS /api/ws` | live delivery: `{"type":"hello","walletId","token"}`, then message, delivered, receipt, identity and sigrequest events |
 | `POST /api/regtest/{mine,fund}` | **regtest only**: mine blocks, or send coins from the faucet wallet |
 
 ### Wallet model (Stage 2)
@@ -99,6 +105,21 @@ Each wallet can have one encrypted vault of trust documentation: the deed, benef
 - **Integrity:** every version stores the SHA-256 of its content, re-checked on read. A version hash can be anchored on regtest (OP_RETURN `BTV1‖sha256`, funded by the faucet, then a block is mined). Verification shows block height, txid, block hash and confirmations.
 - **Passphrase change:** fully re-encrypts with a new salt and a new data key, re-seals every attachment, and signs out other sessions. **Backup:** a single JSON file that is still ciphertext. Restore verifies the passphrase and every attachment tag before writing anything.
 
+### Trustee messaging (Stage 5)
+An end-to-end encrypted channel between a trust's key holders. Each wallet has an all-trustees thread and 1:1 threads.
+Message types are text, a **signature request** linked to a PSBT, an urgent flag, and a reference to a Trust Vault attachment.
+Messages carry delivery and read receipts, arrive live over WebSocket, and queue in an offline outbox when the node is unreachable.
+
+- **Crypto (TweetNaCl, audited, the same code in browser and server: `shared/msgcrypto.ts`):** keys are generated in the browser and never sent.
+  - Each message has a random key and is sealed with XSalsa20-Poly1305. That key is wrapped for every member (sender included) with X25519 `box`.
+  - The whole envelope is Ed25519-signed, so tampering with ciphertext, recipients, urgent flag, thread or time is detected.
+  - The server stores and relays ciphertext plus routing metadata only.
+- **Identity binding:** the cosigner's Bitcoin key signs an attestation of the messaging keys with `signmessage`, the same identity key as the vault second factor. Node, HWI device or air-gapped paste can sign. The server verifies it with `verifymessage`. Badges show ✓ Verified and a safety number for out-of-band comparison.
+- **Signature requests:** "Request signature" on the PSBT screen notifies trustees. Each signs with their own cosigner key from the chat card. Status (n/m, timeline, broadcast) updates live.
+- **Urgent:** unread urgent messages raise an app-wide banner until every recipient has read them.
+
+Design notes, metadata exposure, the Tor/myNode transport and dead-man/time-lock future work are in [docs/trustee-messaging.md](docs/trustee-messaging.md).
+
 ## Run
 ```bash
 cp .env.example .env              # set RPC credentials (must match bitcoin.conf)
@@ -113,12 +134,13 @@ npm run node:reset                # wipe the regtest chain + wallets
 npm run emu:start                 # headless Trezor emulator + test seed (needs libsdl2-image)
 npm run screenshot:stage3         # stage3-devices/-wizard/-wallet-detail/-sign.png
 npm run screenshot:stage4         # seeds a demo vault (Trezor 2nd factor) → stage4-vault-locked.png, stage4-vault.png
+npm run screenshot:stage5         # seeds demo trustees + encrypted thread → stage5-messages.png, stage5-sigrequest.png
 bash scripts/regtest-node.sh cli -generate 1   # mine a block and watch the dashboard update
 ```
 
 ## Roadmap
 0. Foundation ✅ · 1. Node dashboard ✅ · 2. Multisig wallet (2-of-3 P2WSH descriptors) ✅ · 3. Hardware wallets (PSBT/HWI) ✅ ·
-4. Encrypted trust vault ✅ · 5. Trustee messaging · 6. Timeline (US economy milestones + [white paper](https://bitcoin.org/bitcoin.pdf)) and goals tracker
+4. Encrypted trust vault ✅ · 5. Trustee messaging ✅ · 6. Timeline (US economy milestones + [white paper](https://bitcoin.org/bitcoin.pdf)) and goals tracker
 
 ## myNode deployment notes
 - Set `BITCOIN_RPC_HOST`/`PORT`/`USER`/`PASSWORD` to myNode's bitcoind values (see `/mnt/hdd/mynode/bitcoin/bitcoin.conf`, or the
