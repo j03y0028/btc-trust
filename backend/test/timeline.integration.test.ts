@@ -3,6 +3,7 @@ import request from 'supertest';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { execFileSync } from 'node:child_process';
 import { loadConfig } from '../src/config.js';
 import { createApp } from '../src/app.js';
 import { BitcoinRpc } from '../src/rpc.js';
@@ -46,9 +47,11 @@ describe('timeline & goals API', () => {
     const r = await request(app).get('/api/progress');
     expect(r.body.stages).toHaveLength(9);
     const s5 = r.body.stages.find((s: { id: number }) => s.id === 5);
-    expect(s5.commit.short).toBe('e31f8e9');
+    // Resolve via git rather than pinning a SHA (history may be rewritten); it must be a real Stage 5 commit.
+    expect(s5.commit.short).toMatch(/^[0-9a-f]{7,}$/);
+    expect(execFileSync('git', ['log', '-1', '--format=%s', s5.commit.short], { encoding: 'utf8' })).toMatch(/^Stage 5\b/);
     expect(s5.tests).toMatchObject({ backend: 106, frontend: 30 });
-    expect(r.body.stages[0].commit.short).toBe('c83917b');
+    expect(execFileSync('git', ['log', '-1', '--format=%s', r.body.stages[0].commit.short], { encoding: 'utf8' })).toMatch(/^Stage 0\+1\b/);
     expect(r.body.backlog.map((b: { title: string }) => b.title)).toEqual(expect.arrayContaining(['Tor transport', 'Install on a physical myNode']));
   });
 });
