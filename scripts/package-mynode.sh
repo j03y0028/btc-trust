@@ -27,4 +27,11 @@ cp mynode/install-mynode.sh mynode/uninstall-mynode.sh "$OUT/"
 cp docs/mynode-install.md "$OUT/docs/"
 cp docker-compose.yml btctrust.env.example "$OUT/"
 (cd build && tar czf "btctrust-mynode-v$VERSION.tar.gz" "btctrust-mynode-v$VERSION" && sha256sum "btctrust-mynode-v$VERSION.tar.gz" > "btctrust-mynode-v$VERSION.tar.gz.sha256")
-ls -lh build/*.tar.gz; cat "build/btctrust-mynode-v$VERSION.tar.gz.sha256"
+# x86_64-only bundle (smaller download for x86 PCs): same contents without the arm64 image
+if [ -f "$OUT/btctrust/app_data/btctrust-image-x86_64.tar.gz" ]; then
+    rm -rf build/x86 && mkdir -p build/x86 && cp -a "$OUT" build/x86/
+    rm -f build/x86/"btctrust-mynode-v$VERSION"/btctrust/app_data/btctrust-image-aarch64.tar.gz*
+    (cd build/x86 && tar czf "btctrust-mynode-v$VERSION-x86_64.tar.gz" "btctrust-mynode-v$VERSION" \
+        && sha256sum "btctrust-mynode-v$VERSION-x86_64.tar.gz" > "btctrust-mynode-v$VERSION-x86_64.tar.gz.sha256")
+fi
+ls -lh build/*.tar.gz build/x86/*.tar.gz 2>/dev/null; cat build/*.sha256 build/x86/*.sha256 2>/dev/null

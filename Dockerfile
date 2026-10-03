@@ -2,7 +2,7 @@
 # BTC Trust — single image for myNode (amd64 + arm64):
 #   * the API serves the built frontend on one port (9330)
 #   * bundled Bitcoin Core for the separate TEST wallet node (regtest/signet), started as its own container
-# Build:  docker buildx build --platform linux/amd64,linux/arm64 -t btctrust:0.8.0 .
+# Build:  docker buildx build --platform linux/amd64,linux/arm64 -t btctrust:0.8.1 .
 
 ARG NODE_IMAGE=node:22-bookworm-slim
 
@@ -52,7 +52,7 @@ RUN set -eu; \
 FROM ${NODE_IMAGE}
 LABEL org.opencontainers.image.title="BTC Trust" \
       org.opencontainers.image.description="Family Bitcoin trust app: read-only mainnet dashboard + test-chain wallets (myNode)" \
-      org.opencontainers.image.version="0.8.0"
+      org.opencontainers.image.version="0.8.1"
 ENV NODE_ENV=production \
     APP_ROOT=/app \
     STATIC_DIR=/app/frontend/dist \

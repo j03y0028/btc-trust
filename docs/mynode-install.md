@@ -8,7 +8,7 @@
 ## What you need
 
 - A myNode (Raspberry Pi 4/5 = `aarch64`, or an x86_64 PC) on a recent release (Bitcoin Core 29.x is fine) with Docker running. myNode ships Docker for its Docker-based apps.
-- The release package from [GitHub Releases](https://github.com/j03y0028/btc-trust/releases/tag/v0.8.0). Step 1 downloads it directly on the myNode.
+- The release package from [GitHub Releases](https://github.com/j03y0028/btc-trust/releases/tag/v0.8.1). Step 1 downloads it directly on the myNode.
 - About 1 GB free on the myNode drive.
 - Port **9330** free (and 9331 for https). No stock myNode app uses either port.
 
@@ -32,29 +32,29 @@ uname -m      # x86_64 = x86 PC (e.g. Beelink mini PC) · aarch64 = Raspberry Pi
 
 ```bash
 cd ~
-wget https://github.com/j03y0028/btc-trust/releases/download/v0.8.0/btctrust-mynode-v0.8.0-x86_64.tar.gz
-wget https://github.com/j03y0028/btc-trust/releases/download/v0.8.0/btctrust-mynode-v0.8.0-x86_64.tar.gz.sha256
-sha256sum -c btctrust-mynode-v0.8.0-x86_64.tar.gz.sha256      # must print: OK
-tar xzf btctrust-mynode-v0.8.0-x86_64.tar.gz
+wget https://github.com/j03y0028/btc-trust/releases/download/v0.8.1/btctrust-mynode-v0.8.1-x86_64.tar.gz
+wget https://github.com/j03y0028/btc-trust/releases/download/v0.8.1/btctrust-mynode-v0.8.1-x86_64.tar.gz.sha256
+sha256sum -c btctrust-mynode-v0.8.1-x86_64.tar.gz.sha256      # must print: OK
+tar xzf btctrust-mynode-v0.8.1-x86_64.tar.gz
 ```
 
 **aarch64** (Raspberry Pi): use the full package (x86_64 + arm64 images), about 185 MB:
 
 ```bash
 cd ~
-wget https://github.com/j03y0028/btc-trust/releases/download/v0.8.0/btctrust-mynode-v0.8.0.tar.gz
-wget https://github.com/j03y0028/btc-trust/releases/download/v0.8.0/btctrust-mynode-v0.8.0.tar.gz.sha256
-sha256sum -c btctrust-mynode-v0.8.0.tar.gz.sha256             # must print: OK
-tar xzf btctrust-mynode-v0.8.0.tar.gz
+wget https://github.com/j03y0028/btc-trust/releases/download/v0.8.1/btctrust-mynode-v0.8.1.tar.gz
+wget https://github.com/j03y0028/btc-trust/releases/download/v0.8.1/btctrust-mynode-v0.8.1.tar.gz.sha256
+sha256sum -c btctrust-mynode-v0.8.1.tar.gz.sha256             # must print: OK
+tar xzf btctrust-mynode-v0.8.1.tar.gz
 ```
 
-Both packages unpack to `~/btctrust-mynode-v0.8.0/`. No `wget`? Use `curl -fLO <url>` instead.
+Both packages unpack to `~/btctrust-mynode-v0.8.1/`. No `wget`? Use `curl -fLO <url>` instead.
 To build the package yourself instead, run `scripts/package-mynode.sh` on a machine with Docker, then `scp` it over.
 
 ## 2. Run the installer (on the myNode)
 
 ```bash
-cd ~/btctrust-mynode-v0.8.0
+cd ~/btctrust-mynode-v0.8.1
 sudo ./install-mynode.sh
 ```
 
@@ -164,7 +164,7 @@ grep "not allowed to call method" /mnt/hdd/mynode/bitcoin/debug.log | tail   # a
 ## Uninstall
 
 ```bash
-cd ~/btctrust-mynode-v0.8.0
+cd ~/btctrust-mynode-v0.8.1
 sudo ./uninstall-mynode.sh            # app, images, app definition, RPC user; KEEPS /mnt/hdd/mynode/btctrust
 sudo ./uninstall-mynode.sh --purge    # also deletes the app data (asks you to type DELETE)
 ```
