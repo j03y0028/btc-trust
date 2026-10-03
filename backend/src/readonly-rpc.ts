@@ -7,7 +7,7 @@ export interface RpcLike {
 }
 
 /**
- * The ONLY RPC methods this app may send to a mainnet node (e.g. Joey's myNode). All are pure chain/network reads:
+ * The ONLY RPC methods this app may send to a mainnet node (e.g. your myNode). All are pure chain/network reads:
  * no wallet, signing, sending, importing, mining, peer, ban, mempool-write or node-control methods. The same list is
  * emitted as a bitcoind `rpcwhitelist=` line (docs/mynode-install.md) so bitcoind enforces it a second time.
  */

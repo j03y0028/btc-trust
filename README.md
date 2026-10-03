@@ -251,7 +251,7 @@ bash scripts/regtest-node.sh cli -generate 1   # mine a block and watch the dash
 - **Packaging:** a multi-stage [Dockerfile](Dockerfile) (one port, 9330, serving the built SPA plus the API; non-root; healthcheck; verified Bitcoin Core
   31.1 for the test node; amd64 + arm64 via buildx), [docker-compose.yml](docker-compose.yml), and the myNode app definition in [mynode/btctrust](mynode/btctrust)
   with [install-mynode.sh](mynode/install-mynode.sh) and [uninstall-mynode.sh](mynode/uninstall-mynode.sh). `scripts/package-mynode.sh` builds the tarball.
-- **Install guide for Joey:** [docs/mynode-install.md](docs/mynode-install.md).
+- **Install guide:** [docs/mynode-install.md](docs/mynode-install.md).
 - **Simulated myNode:** `scripts/mynode-sim.sh up`, then `backend/node_modules/.bin/tsx scripts/verify-mynode-sim.mts` (50 end-to-end checks), then
   `scripts/mynode-sim.sh down`.
 

@@ -30,9 +30,9 @@ describe('Coldcard multisig setup file', () => {
     }
   });
   it('enforces Coldcard limits: 20-char ASCII name', () => {
-    expect(coldcardName('The Whitfield Family Irrevocable Trust ✨')).toBe('The Whitfield Family Irre');
+    expect(coldcardName('The Whitfield Family Irrevocable Trust ✨')).toBe('The Whitfield Family');
     const t = coldcardMultisigFile({ ...board, name: 'The Whitfield Family Irrevocable Trust' });
-    expect(parseColdcardMultisig(t).name).toBe('The Whitfield Family Irre');
+    expect(parseColdcardMultisig(t).name).toBe('The Whitfield Family');
   });
   it('rejects malformed files like the device would', () => {
     const good = coldcardMultisigFile(trezorVault);

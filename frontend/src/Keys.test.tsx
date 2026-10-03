@@ -94,13 +94,13 @@ describe('encrypted trustee keystore', () => {
 })
 
 describe('client-side Bitcoin attestation check (BIP-137)', () => {
-  // Real signature produced by Bitcoin Core 31.1 `signmessage` on regtest (Stage 5 demo trustee enrollment).
+  // Real signature produced by Bitcoin Core 31.1 `signmessage` on regtest (Stage 5 demo trustee enrollment, re-signed for the demo label).
   const core = {
     walletId: 'family-trust-vault-30c585', fingerprint: '51dacbb1', label: 'Jordan',
     signPub: 'jlgTXvLK3fblH1Lky8q42fa+idhjwSINoOAyQhAF4G8=', boxPub: '1Tp+pJ9qhZXOdzCi5x6OiSjoIB2b35ZixQA0YW/o8n4=', issuedAt: '2026-10-03T03:46:06.216Z',
     statement: 'BTC Trust trustee attestation v1\nwallet: family-trust-vault-30c585\ncosigner: 51dacbb1 (Jordan)\ned25519: jlgTXvLK3fblH1Lky8q42fa+idhjwSINoOAyQhAF4G8=\nx25519: 1Tp+pJ9qhZXOdzCi5x6OiSjoIB2b35ZixQA0YW/o8n4=\nissued: 2026-10-03T03:46:06.216Z',
     btcAddress: 'mtehPidqHWJ2uhDdpasCaZVUvT31GD2uM5',
-    btcSignature: 'H48VqUaJAYeUIt74FDlTxIn5e/ozht4mOdwv1HovJBWsQ/Kl1q92jh3uAw/7ZyDFR5Aq8p4DaEbHpgL9yuKJYPU=',
+    btcSignature: 'IKqLI25AmDMt5aobGrnTzp0ia4YIumi1tpTRbpPjPywBBWP8SwE42GOE3CuKS99+ydLBVLpLjFpZ/50xyElLNFs=',
   }
   it('verifies a real Bitcoin Core signmessage signature', () => {
     expect(verifyMessage(core.btcAddress, core.btcSignature, core.statement)).toEqual({ ok: true, address: core.btcAddress, network: 'test/regtest' })
