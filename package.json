@@ -1,0 +1,16 @@
+{
+  "name": "btc-trust",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "install:all": "npm --prefix backend install && npm --prefix frontend install",
+    "node:start": "bash scripts/regtest-node.sh start",
+    "node:stop": "bash scripts/regtest-node.sh stop",
+    "dev": "bash scripts/dev.sh",
+    "test": "npm --prefix backend run typecheck && npm --prefix backend test && npm --prefix frontend test && npm --prefix frontend run build",
+    "screenshot": "node scripts/screenshot.mjs"
+  },
+  "devDependencies": {
+    "playwright": "^1.63.0"
+  }
+}
