@@ -16,7 +16,10 @@
     "emu:stop": "bash scripts/trezor-emu.sh stop",
     "screenshot:stage3": "node scripts/screenshot-stage3.mjs",
     "screenshot:stage4": "node scripts/screenshot-stage4.mjs",
-    "screenshot:stage5": "backend/node_modules/.bin/tsx scripts/screenshot-stage5.mts"
+    "screenshot:stage5": "backend/node_modules/.bin/tsx scripts/screenshot-stage5.mts",
+    "daily:snapshot": "sh -c 'set -a; [ -f .env ] && . ./.env; set +a; exec backend/node_modules/.bin/tsx backend/src/cli/daily-snapshot.ts'",
+    "whitepaper:bundle": "backend/node_modules/.bin/tsx backend/src/cli/fetch-whitepaper.ts",
+    "screenshot:stage6": "backend/node_modules/.bin/tsx scripts/screenshot-stage6.mts"
   },
   "devDependencies": {
     "playwright": "^1.63.0"

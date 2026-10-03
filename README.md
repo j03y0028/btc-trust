@@ -24,9 +24,11 @@ backend/src/faucet.ts     regtest faucet
 backend/src/hwi.ts        HWI CLI adapter   · hwi-mock.ts  mock adapter
 backend/src/devices.ts    device service (paths, xpub, sign, display)
 backend/src/bech32.ts     segwit address decoder (device vs node address check)
+backend/src/timeline/     FRED cache, events, chain parsing, mainnet snapshots, progress
+backend/src/cli/          daily-snapshot.ts, fetch-whitepaper.ts
 backend/test/             unit + regtest integration tests
 frontend/src/App.tsx      dashboard
-frontend/src/pages/       Dashboard, Wallets, WalletDetail, Devices
+frontend/src/pages/       Dashboard, Wallets, WalletDetail, Devices, Vault, Messages, Timeline, Goals
 frontend/src/components/  StatCard, SyncRing, RecentBlocks, StageTracker, CreateWalletWizard, SendFlow, SigRing, QrCode, Modal
 scripts/                  regtest-node.sh, dev.sh, screenshot.mjs
 screenshots/stage1.png
@@ -66,6 +68,9 @@ screenshots/stage1.png
 | `GET\|POST /api/messaging/:walletId/sigrequests`, `POST …/sigrequests/:id/{sign,import,broadcast}` | signature requests linked to a PSBT, with live status |
 | `GET /api/messaging/alerts` | unread urgent messages (metadata only) for the escalation banner |
 | `WS /api/ws` | live delivery: `{"type":"hello","walletId","token"}`, then message, delivered, receipt, identity and sigrequest events |
+| `GET /api/timeline[?since=YYYY-MM-DD]`, `POST /api/timeline/refresh` | FRED series (cached, with fetch date + source URL), cited events, verified genesis/halving data, white-paper hash check |
+| `GET /api/mainnet/daily`, `POST /api/mainnet/snapshot` | read-only mainnet daily log, streak, blocks since genesis, next-halving estimate / take today's snapshot (idempotent) |
+| `GET /api/progress` | stages with achievements, commit hashes and test counts from git, plus the backlog |
 | `POST /api/regtest/{mine,fund}` | **regtest only**: mine blocks, or send coins from the faucet wallet |
 
 ### Wallet model (Stage 2)
@@ -120,6 +125,25 @@ Messages carry delivery and read receipts, arrive live over WebSocket, and queue
 
 Design notes, metadata exposure, the Tor/myNode transport and dead-man/time-lock future work are in [docs/trustee-messaging.md](docs/trustee-messaging.md).
 
+### Timeline & goals (Stage 6)
+Only real, sourced data. Nothing is typed in by hand except the event list, and every event carries a primary-source citation.
+- **U.S. macro (FRED, St. Louis Fed):** CPIAUCSL, M2SL, FEDFUNDS, GDP, UNRATE are downloaded from `https://fred.stlouisfed.org/graph/fredgraph.csv?id=…`.
+  The raw CSVs are cached in `data/fred/`, with `meta.json` recording the fetch time and URL, and refreshed after 24 h (the stale cache is served on failure).
+  The chart rebases levels to Oct 2008 = 100, the white-paper month, and plots rates in %. It has a brush zoom, range presets, and series and event overlay toggles.
+- **Events** (`backend/src/timeline/events.ts`): Bear Stearns/PDCF, Lehman, TARP, QE1–3, ZIRP, ARRA, first hike, COVID cut, CARES, ARP, the 2022 hikes, BTFP and the 2024 cut.
+  Each cites federalreserve.gov, federalreservehistory.org or congress.gov.
+- **Bitcoin:** the white paper is bundled at `frontend/public/bitcoin.pdf` by `npm run whitepaper:bundle`, which refuses to write unless the SHA-256 is
+  `b1674191…f553`, and it is re-hashed on every load.
+  The genesis block's 80-byte header and coinbase transaction are fetched from mainnet and verified locally: double-SHA256 equals the genesis hash, PoW meets the target, and the merkle root equals the coinbase txid.
+  The Times headline is decoded from the coinbase scriptSig.
+  Halving blocks 210k/420k/630k/840k come from fetched headers whose hash and PoW are checked. Block 1,050,000 is estimated from the average interval since block 840,000.
+- **Daily mainnet log** (`data/daily-blocks.json`, `npm run daily:snapshot`, plus an hourly backend job): one entry per local date (idempotent).
+  - Each source's tip hash is checked against its own header (hash + PoW), and height comes from `/block/:hash/status`.
+  - The sources are mempool.space and blockstream.info, cross-checked: `agree`, `disagree` (different hash at the same height, or a lagging tip not on the leader's chain), `single-source` or `unavailable`.
+  - If a primary fails (e.g. HTTP 429), the independent mempool.emzy.de instance is queried so a cross-check is still possible.
+  - With `MAINNET_RPC_HOST` set (myNode), the node's `getblockchaininfo` is primary and the public APIs become the check. Only read-only RPCs are used.
+- **Goals page:** stage commits and test counts come from `git log` / `git grep` at each stage commit, alongside the backlog.
+
 ## Run
 ```bash
 cp .env.example .env              # set RPC credentials (must match bitcoin.conf)
@@ -135,12 +159,17 @@ npm run emu:start                 # headless Trezor emulator + test seed (needs 
 npm run screenshot:stage3         # stage3-devices/-wizard/-wallet-detail/-sign.png
 npm run screenshot:stage4         # seeds a demo vault (Trezor 2nd factor) → stage4-vault-locked.png, stage4-vault.png
 npm run screenshot:stage5         # seeds demo trustees + encrypted thread → stage5-messages.png, stage5-sigrequest.png
+npm run daily:snapshot            # append today's read-only mainnet tip snapshot to data/daily-blocks.json (idempotent per date)
+npm run whitepaper:bundle         # re-download bitcoin.pdf, bundle only if the SHA-256 matches
+npm run screenshot:stage6         # stage6-timeline.png, stage6-goals.png
 bash scripts/regtest-node.sh cli -generate 1   # mine a block and watch the dashboard update
 ```
 
 ## Roadmap
 0. Foundation ✅ · 1. Node dashboard ✅ · 2. Multisig wallet (2-of-3 P2WSH descriptors) ✅ · 3. Hardware wallets (PSBT/HWI) ✅ ·
-4. Encrypted trust vault ✅ · 5. Trustee messaging ✅ · 6. Timeline (US economy milestones + [white paper](https://bitcoin.org/bitcoin.pdf)) and goals tracker
+4. Encrypted trust vault ✅ · 5. Trustee messaging ✅ · 6. Timeline (US economy milestones + [white paper](https://bitcoin.org/bitcoin.pdf)), daily mainnet log and goals tracker ✅
+
+Next: encrypt messaging keys at rest · Ledger/Coldcard registration · animated QR · Tor transport · myNode packaging · independent security audit
 
 ## myNode deployment notes
 - Set `BITCOIN_RPC_HOST`/`PORT`/`USER`/`PASSWORD` to myNode's bitcoind values (see `/mnt/hdd/mynode/bitcoin/bitcoin.conf`, or the
@@ -150,4 +179,6 @@ bash scripts/regtest-node.sh cli -generate 1   # mine a block and watch the dash
 - bitcoind's `rpcallowip` must include the app's container or host IP. In Docker, set `API_HOST=0.0.0.0`.
 - For a production build: `npm --prefix frontend run build`, then serve `frontend/dist` behind the same origin as `/api`
   (myNode's app framework is Docker plus an nginx reverse proxy).
+- Timeline: set `MAINNET_RPC_HOST`/`USER`/`PASSWORD` to myNode's bitcoind and the daily log reads `getblockchaininfo` from your own node,
+  with no mainnet guard change needed, because only read-only RPCs are used and the wallet stages stay on regtest.
 - Stages 2 and 3 need wallet RPC (`disablewallet=0`, which is myNode's default). HWI needs USB passthrough to the container.

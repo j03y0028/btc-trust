@@ -16,6 +16,8 @@ import { vaultRouter } from './vault/routes.js';
 import { IdentityKeys } from './identity.js';
 import { MessagingService } from './messaging/service.js';
 import { messagingRouter } from './messaging/routes.js';
+import { TimelineService } from './timeline/service.js';
+import { timelineRouter } from './timeline/routes.js';
 
 export function hwiFromConfig(cfg: AppConfig, rpc: BitcoinRpc): HwiAdapter | null {
   const { mode, bin, emulators, timeoutMs } = cfg.hwi;
@@ -28,7 +30,7 @@ export function hwiFromConfig(cfg: AppConfig, rpc: BitcoinRpc): HwiAdapter | nul
 /** Extended private keys must never leave the node. */
 const XPRV_RE = /\b[tx]prv[1-9A-HJ-NP-Za-km-z]{100,}/;
 
-export function createApp(cfg: AppConfig, rpc = new BitcoinRpc(cfg), store = new WalletStore(cfg.dataDir, cfg.network), hwi: HwiAdapter | null = hwiFromConfig(cfg, rpc)) {
+export function createApp(cfg: AppConfig, rpc = new BitcoinRpc(cfg), store = new WalletStore(cfg.dataDir, cfg.network), hwi: HwiAdapter | null = hwiFromConfig(cfg, rpc), timeline = new TimelineService(cfg)) {
   const svc = new ChainService(rpc);
   const devices = new DeviceService(hwi, cfg.network);
   const wallets = new WalletService(rpc, store, cfg.network, devices);
@@ -37,6 +39,7 @@ export function createApp(cfg: AppConfig, rpc = new BitcoinRpc(cfg), store = new
   const vault = new VaultService(rpc, wallets, devices, faucet, { dataDir: cfg.dataDir, network: cfg.network, idleMs: cfg.vault.idleMs, kdfN: cfg.vault.kdfN });
   const app = express();
   app.locals.messaging = messaging;
+  app.locals.timeline = timeline;
   app.use(cors({ origin: [/^http:\/\/localhost(:\d+)?$/, /^http:\/\/127\.0\.0\.1(:\d+)?$/] }));
   // Backup restore can be large; it has its own parser.
   app.use((req, res, next) => (/^\/api\/vaults\/[^/]+\/restore$/.test(req.path) ? next() : express.json({ limit: '2mb' })(req, res, next)));
@@ -136,6 +139,8 @@ export function createApp(cfg: AppConfig, rpc = new BitcoinRpc(cfg), store = new
   // ---- Trust vault ----
   app.use('/api/vaults', vaultRouter(vault));
   app.use('/api/messaging', messagingRouter(messaging));
+  // ---- Timeline & goals (mainnet data is read-only: public APIs or getblockchaininfo) ----
+  app.use('/api', timelineRouter(timeline));
 
   // ---- Regtest helpers (disabled on every other network) ----
   const target = async (req: Request): Promise<string | undefined> => {

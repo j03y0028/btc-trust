@@ -1,0 +1,25 @@
+/** Curated milestones. Every entry cites a primary source (each URL checked to load and match before inclusion). */
+export interface TimelineEvent { date: string; kind: 'us' | 'bitcoin'; title: string; detail: string; citation: string; source: string }
+
+export const US_EVENTS: TimelineEvent[] = [
+  { date: '2008-03-16', kind: 'us', title: 'Bear Stearns rescue & Primary Dealer Credit Facility', detail: 'The Fed announces two liquidity initiatives and approves financing for JPMorgan Chase’s acquisition of Bear Stearns.', citation: 'https://www.federalreserve.gov/newsevents/pressreleases/monetary20080316a.htm', source: 'Federal Reserve press release' },
+  { date: '2008-09-15', kind: 'us', title: 'Lehman Brothers files for bankruptcy', detail: 'Lehman Brothers Holdings files for bankruptcy on September 15, 2008, a turning point of the financial crisis.', citation: 'https://www.federalreservehistory.org/essays/support-for-specific-institutions', source: 'Federal Reserve History' },
+  { date: '2008-10-03', kind: 'us', title: 'TARP: Emergency Economic Stabilization Act', detail: 'Public Law 110-343 creates the Troubled Asset Relief Program.', citation: 'https://www.congress.gov/bill/110th-congress/house-bill/1424', source: 'Congress.gov (H.R.1424)' },
+  { date: '2008-11-25', kind: 'us', title: 'QE1 announced', detail: 'The Fed will purchase GSE direct obligations and MBS backed by Fannie Mae, Freddie Mac and Ginnie Mae.', citation: 'https://www.federalreserve.gov/newsevents/pressreleases/monetary20081125b.htm', source: 'Federal Reserve press release' },
+  { date: '2008-12-16', kind: 'us', title: 'Fed funds target cut to 0–¼ percent', detail: 'The FOMC establishes a target range of 0 to 1/4 percent for the federal funds rate.', citation: 'https://www.federalreserve.gov/newsevents/pressreleases/monetary20081216b.htm', source: 'Federal Reserve press release' },
+  { date: '2009-02-17', kind: 'us', title: 'American Recovery and Reinvestment Act', detail: 'Public Law 111-5 stimulus package signed into law.', citation: 'https://www.congress.gov/bill/111th-congress/house-bill/1', source: 'Congress.gov (H.R.1)' },
+  { date: '2010-11-03', kind: 'us', title: 'QE2 announced', detail: 'A further $600 billion of longer-term Treasury securities by the end of Q2 2011 (about $75 billion per month).', citation: 'https://www.federalreserve.gov/newsevents/pressreleases/monetary20101103a.htm', source: 'Federal Reserve press release' },
+  { date: '2012-09-13', kind: 'us', title: 'QE3 announced', detail: 'Open-ended purchases of agency MBS at $40 billion per month.', citation: 'https://www.federalreserve.gov/newsevents/pressreleases/monetary20120913a.htm', source: 'Federal Reserve press release' },
+  { date: '2015-12-16', kind: 'us', title: 'First rate hike since 2006', detail: 'Target range raised to 1/4 to 1/2 percent.', citation: 'https://www.federalreserve.gov/newsevents/pressreleases/monetary20151216a.htm', source: 'Federal Reserve press release' },
+  { date: '2020-03-15', kind: 'us', title: 'COVID-19 emergency cut & asset purchases', detail: 'Target range cut to 0 to 1/4 percent; Treasury holdings to increase by at least $500 billion.', citation: 'https://www.federalreserve.gov/newsevents/pressreleases/monetary20200315a.htm', source: 'Federal Reserve press release' },
+  { date: '2020-03-27', kind: 'us', title: 'CARES Act', detail: 'Public Law 116-136, Coronavirus Aid, Relief, and Economic Security Act.', citation: 'https://www.congress.gov/bill/116th-congress/house-bill/748', source: 'Congress.gov (H.R.748)' },
+  { date: '2021-03-11', kind: 'us', title: 'American Rescue Plan Act', detail: 'Public Law 117-2 signed into law.', citation: 'https://www.congress.gov/bill/117th-congress/house-bill/1319', source: 'Congress.gov (H.R.1319)' },
+  { date: '2022-03-16', kind: 'us', title: 'Hiking cycle begins', detail: 'Target range raised to 1/4 to 1/2 percent amid high inflation.', citation: 'https://www.federalreserve.gov/newsevents/pressreleases/monetary20220316a.htm', source: 'Federal Reserve press release' },
+  { date: '2023-03-12', kind: 'us', title: 'SVB failure: Bank Term Funding Program', detail: 'The Fed makes additional funding available to eligible depository institutions.', citation: 'https://www.federalreserve.gov/newsevents/pressreleases/monetary20230312a.htm', source: 'Federal Reserve press release' },
+  { date: '2024-09-18', kind: 'us', title: 'Easing begins', detail: 'Target range lowered by 1/2 percentage point to 4-3/4 to 5 percent.', citation: 'https://www.federalreserve.gov/newsevents/pressreleases/monetary20240918a.htm', source: 'Federal Reserve press release' },
+];
+
+export const BITCOIN_WHITEPAPER_EVENT: TimelineEvent = {
+  date: '2008-10-31', kind: 'bitcoin', title: 'Bitcoin white paper published', detail: 'Satoshi Nakamoto announces “Bitcoin P2P e-cash paper” on the cryptography mailing list.',
+  citation: 'https://www.metzdowd.com/pipermail/cryptography/2008-October/014810.html', source: 'metzdowd.com cryptography list',
+};

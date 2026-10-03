@@ -9,6 +9,8 @@ import { Devices } from './pages/Devices'
 import { VaultIndex, VaultPage } from './pages/Vault'
 import { MessagesIndex, MessagesPage } from './pages/Messages'
 import { UrgentBanner } from './components/UrgentBanner'
+import { Timeline } from './pages/Timeline'
+import { Goals } from './pages/Goals'
 
 const POLL_MS = 5000
 
@@ -43,7 +45,7 @@ export default function App() {
   const walletId = path.match(/^\/wallets\/([^/?]+)/)?.[1]
   const vaultId = path.match(/^\/vault\/([^/?]+)/)?.[1]
   const msgId = path.match(/^\/messages\/([^/?]+)/)?.[1]
-  const section = path.startsWith('/wallets') ? 'wallets' : path.startsWith('/devices') ? 'devices' : path.startsWith('/vault') ? 'vault' : path.startsWith('/messages') ? 'messages' : 'dashboard'
+  const section = path.startsWith('/wallets') ? 'wallets' : path.startsWith('/devices') ? 'devices' : path.startsWith('/vault') ? 'vault' : path.startsWith('/messages') ? 'messages' : path.startsWith('/timeline') ? 'timeline' : path.startsWith('/goals') ? 'goals' : 'dashboard'
   const preset = query.new === 'multisig' || query.new === 'singlesig' ? { choice: query.new as 'multisig' | 'singlesig', hw: query.hw } : undefined
 
   return (
@@ -64,6 +66,8 @@ export default function App() {
           <button className={section === 'devices' ? 'active' : ''} onClick={() => navigate('/devices')}>Devices</button>
           <button className={section === 'vault' ? 'active' : ''} onClick={() => navigate('/vault')}>Vault</button>
           <button className={section === 'messages' ? 'active' : ''} onClick={() => navigate('/messages')}>Messages</button>
+          <button className={section === 'timeline' ? 'active' : ''} onClick={() => navigate('/timeline')}>Timeline</button>
+          <button className={section === 'goals' ? 'active' : ''} onClick={() => navigate('/goals')}>Goals</button>
         </nav>
         <div className="status">
           {chain && <span className={`net net-${chain.network}`}>{chain.network}</span>}
@@ -85,11 +89,13 @@ export default function App() {
           : section === 'vault' ? <VaultIndex />
           : section === 'wallets' ? <Wallets preset={preset} />
           : section === 'devices' ? <Devices />
+          : section === 'timeline' ? <Timeline />
+          : section === 'goals' ? <Goals />
           : <Dashboard chain={chain} blocks={blocks} stages={stages} newest={newest} />}
       </div>
 
       <footer className="foot muted">
-        Regtest only · no real funds · private keys never leave bitcoind · vault documents encrypted at rest · <a href="https://bitcoin.org/bitcoin.pdf" target="_blank" rel="noreferrer">Bitcoin white paper</a>
+        Regtest only · no real funds · private keys never leave bitcoind · vault documents encrypted at rest · mainnet data read-only · <a href="https://bitcoin.org/bitcoin.pdf" target="_blank" rel="noreferrer">Bitcoin white paper</a>
       </footer>
     </div>
   )

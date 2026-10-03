@@ -39,7 +39,7 @@ describe('App dashboard', () => {
 })
 
 describe('StageTracker', () => {
-  it('lists all stages and marks stages 0-5 complete', () => {
+  it('lists all stages and marks stages 0-6 complete', () => {
     render(<StageTracker stages={DEFAULT_STAGES} />)
     for (let i = 0; i <= 6; i++) expect(screen.getByTestId(`stage-${i}`)).toBeInTheDocument()
     expect(screen.getByTestId('stage-1')).toHaveClass('stage-complete')
@@ -47,8 +47,8 @@ describe('StageTracker', () => {
     expect(screen.getByTestId('stage-3')).toHaveClass('stage-complete')
     expect(screen.getByTestId('stage-4')).toHaveClass('stage-complete')
     expect(screen.getByTestId('stage-5')).toHaveClass('stage-complete')
-    expect(screen.getByTestId('stage-6')).toHaveClass('stage-planned')
-    expect(screen.getByTestId('stage-count')).toHaveTextContent('6/7')
+    expect(screen.getByTestId('stage-6')).toHaveClass('stage-complete')
+    expect(screen.getByTestId('stage-count')).toHaveTextContent('7/7')
   })
 })
 

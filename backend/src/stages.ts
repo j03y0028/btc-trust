@@ -9,5 +9,5 @@ export const STAGES: Stage[] = [
   { id: 3, title: 'Hardware Wallets', description: 'PSBT export/import, HWI integration, software signer fallback', status: 'complete' },
   { id: 4, title: 'Trust Vault', description: 'Password-protected, encrypted-at-rest trust documentation', status: 'complete' },
   { id: 5, title: 'Trustee Messaging', description: 'Private internal channel between trustees', status: 'complete' },
-  { id: 6, title: 'Timeline & Goals', description: 'US economy milestones vs. the Bitcoin white paper, daily block data, progress tracker', status: 'planned' },
+  { id: 6, title: 'Timeline & Goals', description: 'US economy milestones vs. the Bitcoin white paper, daily block data, progress tracker', status: 'complete' },
 ];

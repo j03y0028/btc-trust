@@ -27,6 +27,8 @@ export interface AppConfig {
   dataDir: string;
   hwi: { mode: 'auto' | 'cli' | 'mock' | 'off'; bin: string; emulators: boolean; timeoutMs: number };
   vault: { idleMs: number; kdfN: number };
+  /** Read-only mainnet observation for the timeline. No wallet RPCs are ever sent to this node. */
+  mainnet: { node: { host: string; port: number; user: string; password: string } | null; snapshots: boolean };
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
@@ -56,6 +58,13 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     vault: {
       idleMs: Number(env.VAULT_IDLE_MS ?? 5 * 60_000),
       kdfN: Number(env.VAULT_SCRYPT_N ?? 2 ** 17),
+    },
+    mainnet: {
+      // e.g. a myNode box: MAINNET_RPC_HOST=mynode.local MAINNET_RPC_USER=... MAINNET_RPC_PASSWORD=...
+      node: env.MAINNET_RPC_HOST
+        ? { host: env.MAINNET_RPC_HOST, port: Number(env.MAINNET_RPC_PORT ?? 8332), user: env.MAINNET_RPC_USER ?? '', password: env.MAINNET_RPC_PASSWORD ?? '' }
+        : network === 'main' ? { host: env.BITCOIN_RPC_HOST ?? '127.0.0.1', port: Number(env.BITCOIN_RPC_PORT ?? 8332), user: env.BITCOIN_RPC_USER ?? '', password: env.BITCOIN_RPC_PASSWORD ?? '' } : null,
+      snapshots: (env.MAINNET_SNAPSHOTS ?? 'true') === 'true',
     },
   };
 }
