@@ -1,6 +1,8 @@
 import type { Server } from 'node:http';
 import { WebSocketServer, type WebSocket } from 'ws';
 import type { HubEvent, MessagingService } from './service.js';
+import type { AppConfig } from '../config.js';
+import { allowedHost, allowedOrigin } from '../security.js';
 
 interface Client { ws: WebSocket; walletId: string; fingerprint: string }
 
@@ -10,12 +12,17 @@ interface Client { ws: WebSocket; walletId: string; fingerprint: string }
  * ciphertext envelopes, receipts and signature-request updates for that trustee, and
  * immediately flushes anything queued while the trustee was offline.
  */
-export function attachRealtime(server: Server, msg: MessagingService) {
+export function attachRealtime(server: Server, msg: MessagingService, cfg?: Pick<AppConfig, 'security'>) {
   const wss = new WebSocketServer({ noServer: true, maxPayload: 64 * 1024 });
   const clients = new Set<Client>();
 
   server.on('upgrade', (req, socket, head) => {
     if (!req.url?.startsWith('/api/ws')) return;
+    // Cross-site WebSocket hijacking / DNS-rebinding guard: browsers always send Origin on WS upgrades.
+    const sec = cfg ?? { security: { allowedHosts: [], rateLimit: { general: 0, sensitive: 0, outbound: 0 } } };
+    if (!allowedHost(sec, req.headers.host) || (req.headers.origin && !allowedOrigin(sec, req.headers.origin))) {
+      socket.write('HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n'); socket.destroy(); return;
+    }
     wss.handleUpgrade(req, socket, head, (ws) => wss.emit('connection', ws));
   });
 

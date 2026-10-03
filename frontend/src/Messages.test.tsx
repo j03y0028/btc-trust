@@ -6,6 +6,8 @@ import { RequestSignature } from './components/RequestSignature'
 import { N, keyring, outbox, type DirectoryEntry, type SigRequest, type StoredMessage } from './lib/messaging'
 import { newIdentity, openMessage, sealMessage, type Envelope, type SecretIdentity } from '../../shared/msgcrypto'
 import type { PsbtInfo, Wallet } from './lib/api'
+import { keyStore } from './lib/keystore'
+import { attest } from './test-btc'
 
 const W = 'w1'
 const A = newIdentity(N, 'aaaaaaaa')
@@ -18,7 +20,7 @@ const wallet: Wallet = {
     { label: 'Paper', fingerprint: 'cccccccc', key: 'k3', local: false, kind: 'airgapped' },
   ],
 }
-const ident = (i: SecretIdentity, cosigner: number, label: string) => ({ fingerprint: i.fingerprint, signPub: i.signPub, boxPub: i.boxPub, cosigner, label, kind: 'software', issuedAt: '', statement: '', btcAddress: 'mx', btcPath: 'm/44h/1h/0h/0/0', btcSignature: '', attestedAt: '', safetyNumber: '12345 67890 11111 22222 33333 44444', verified: true as const })
+const ident = (i: SecretIdentity, cosigner: number, label: string) => ({ fingerprint: i.fingerprint, signPub: i.signPub, boxPub: i.boxPub, cosigner, label, kind: 'software', ...attest(W, { fingerprint: i.fingerprint, label, signPub: i.signPub, boxPub: i.boxPub }, cosigner), btcPath: 'm/44h/1h/0h/0/0', attestedAt: '', safetyNumber: '12345 67890 11111 22222 33333 44444', verified: true as const })
 const dir: DirectoryEntry[] = [
   { cosigner: 0, fingerprint: 'aaaaaaaa', label: 'Jordan', kind: 'software', identity: ident(A, 0, 'Jordan'), previousKeys: [] },
   { cosigner: 1, fingerprint: 'bbbbbbbb', label: 'Avery', kind: 'software', identity: ident(B, 1, 'Avery'), previousKeys: [] },
@@ -50,7 +52,7 @@ const stub = (h: H) => {
   vi.stubGlobal('fetch', f)
   return f
 }
-beforeEach(() => { FakeWS.last = null; localStorage.clear(); vi.stubGlobal('WebSocket', FakeWS); keyring.put(W, A); keyring.put(W, B); keyring.setActing(W, 'aaaaaaaa') })
+beforeEach(async () => { FakeWS.last = null; keyStore.lock(); localStorage.clear(); vi.stubGlobal('WebSocket', FakeWS); await keyStore.create('correct horse battery'); await keyring.put(W, A); await keyring.put(W, B); keyring.setActing(W, 'aaaaaaaa') })
 afterEach(() => vi.unstubAllGlobals())
 
 const base = (msgs: StoredMessage[], extra?: H): H => (url, init) => {

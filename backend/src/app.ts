@@ -18,6 +18,9 @@ import { MessagingService } from './messaging/service.js';
 import { messagingRouter } from './messaging/routes.js';
 import { TimelineService } from './timeline/service.js';
 import { timelineRouter } from './timeline/routes.js';
+import { RegistrationService } from './registration/service.js';
+import { registrationRouter } from './registration/routes.js';
+import { securityMiddleware } from './security.js';
 
 export function hwiFromConfig(cfg: AppConfig, rpc: BitcoinRpc): HwiAdapter | null {
   const { mode, bin, emulators, timeoutMs } = cfg.hwi;
@@ -37,9 +40,13 @@ export function createApp(cfg: AppConfig, rpc = new BitcoinRpc(cfg), store = new
   const faucet = new Faucet(rpc, cfg.network);
   const messaging = new MessagingService(wallets, new IdentityKeys(rpc, wallets, devices, cfg.network), { dataDir: cfg.dataDir });
   const vault = new VaultService(rpc, wallets, devices, faucet, { dataDir: cfg.dataDir, network: cfg.network, idleMs: cfg.vault.idleMs, kdfN: cfg.vault.kdfN });
+  const registration = new RegistrationService(wallets, devices, { dataDir: cfg.dataDir, network: cfg.network });
   const app = express();
   app.locals.messaging = messaging;
   app.locals.timeline = timeline;
+  app.disable('x-powered-by');
+  app.set('trust proxy', false);
+  app.use(...securityMiddleware(cfg));
   app.use(cors({ origin: [/^http:\/\/localhost(:\d+)?$/, /^http:\/\/127\.0\.0\.1(:\d+)?$/] }));
   // Backup restore can be large; it has its own parser.
   app.use((req, res, next) => (/^\/api\/vaults\/[^/]+\/restore$/.test(req.path) ? next() : express.json({ limit: '2mb' })(req, res, next)));
@@ -135,6 +142,9 @@ export function createApp(cfg: AppConfig, rpc = new BitcoinRpc(cfg), store = new
   app.post('/api/wallets/:id/psbt/combine', async (req, res) => res.json(await wallets.combine(id(req), req.body?.psbts)));
   app.post('/api/wallets/:id/psbt/finalize', async (req, res) => res.json(await wallets.finalize(id(req), psbtOf(req))));
   app.post('/api/wallets/:id/psbt/broadcast', async (req, res) => res.json(await wallets.broadcast(id(req), psbtOf(req))));
+
+  // ---- Multisig registration on signing devices (Coldcard file, Ledger policy, Trezor: none) ----
+  app.use('/api/wallets', registrationRouter(registration));
 
   // ---- Trust vault ----
   app.use('/api/vaults', vaultRouter(vault));

@@ -1,8 +1,10 @@
 /** `npm run daily:snapshot`: append today's read-only mainnet snapshot to data/daily-blocks.json (idempotent per date). */
 import { loadConfig } from '../config.js';
+import { hardenFilePermissions } from '../security.js';
 import { TimelineService } from '../timeline/service.js';
 
 const cfg = loadConfig();
+hardenFilePermissions(cfg.dataDir);
 const t = new TimelineService(cfg);
 try {
   const { created, snapshot: s } = await t.mainnet.snapshot();

@@ -8,6 +8,7 @@ import { WalletDetail } from './pages/WalletDetail'
 import { Devices } from './pages/Devices'
 import { VaultIndex, VaultPage } from './pages/Vault'
 import { MessagesIndex, MessagesPage } from './pages/Messages'
+import { KeyGate } from './components/KeyGate'
 import { UrgentBanner } from './components/UrgentBanner'
 import { Timeline } from './pages/Timeline'
 import { Goals } from './pages/Goals'
@@ -84,7 +85,7 @@ export default function App() {
       <div key={path} className="route">
         {walletId ? <WalletDetail id={walletId} />
           : vaultId ? <VaultPage walletId={vaultId} />
-          : msgId ? <MessagesPage key={msgId + (query.thread ?? '')} walletId={msgId} initialThread={query.thread} />
+          : msgId ? <KeyGate><MessagesPage key={msgId + (query.thread ?? '')} walletId={msgId} initialThread={query.thread} /></KeyGate>
           : section === 'messages' ? <MessagesIndex />
           : section === 'vault' ? <VaultIndex />
           : section === 'wallets' ? <Wallets preset={preset} />

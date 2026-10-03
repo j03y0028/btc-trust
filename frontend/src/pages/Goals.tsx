@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react'
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { timelineApi, type ProgressData } from '../lib/timeline'
 
-const ICONS = ['⚙', '◉', '⛓', '🔐', '📜', '✉', '⏳']
-const BACKLOG_ICONS = ['🔑', '🧩', '▦', '🧅', '📦', '🛡']
+const ICONS = ['⚙', '◉', '⛓', '🔐', '📜', '✉', '⏳', '🛡']
+const BACKLOG_ICONS = ['🧅', '📦', '🛡', '🔌', '🔑']
 
 export function Goals() {
   const [p, setP] = useState<ProgressData | null>(null)
@@ -11,7 +11,7 @@ export function Goals() {
   useEffect(() => { timelineApi.progress().then(setP).catch((e) => setError(e.message)) }, [])
 
   const done = p?.stages.filter((s) => s.status === 'complete').length ?? 0
-  const total = p?.stages.length ?? 7
+  const total = p?.stages.length ?? 8
   const latest = p?.stages.filter((s) => s.tests).at(-1)?.tests
   const chart = (p?.stages ?? []).filter((s) => s.tests).map((s) => ({ name: `S${s.id}`, backend: s.tests!.backend, frontend: s.tests!.frontend }))
   const pct = Math.round((done / total) * 100)

@@ -67,7 +67,8 @@ if (fresh) {
 const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: { width: 1440, height: 1000 }, deviceScaleFactor: 2 });
 const keyring = Object.fromEntries([[W, Object.fromEntries(Object.values(ring).map((id) => [id.fingerprint, { current: id, previous: [] }]))]]);
-await page.addInitScript(([k, a]) => { localStorage.setItem('btctrust-trustee-keys-v1', k); localStorage.setItem('btctrust-acting-v1', a); }, [JSON.stringify(keyring), JSON.stringify({ [W]: fps[0] })]);
+// Seed the demo keys once as a legacy v1 keyring; the app then migrates them to the encrypted v2 store (Stage 7).
+await page.addInitScript(([k, a]) => { if (!localStorage.getItem('btctrust-trustee-keys-v2')) localStorage.setItem('btctrust-trustee-keys-v1', k); localStorage.setItem('btctrust-acting-v1', a); }, [JSON.stringify(keyring), JSON.stringify({ [W]: fps[0] })]);
 const shot = async (path: string) => {
   await page.waitForTimeout(1200);
   const h = await page.evaluate(() => document.documentElement.scrollHeight);
@@ -78,6 +79,12 @@ const shot = async (path: string) => {
   console.log('saved', path);
 };
 await page.goto(`${UI}/#/messages/${W}`, { waitUntil: 'networkidle' });
+const PASS = 'demo keyring passphrase';
+if (await page.locator('[data-testid="keygate-legacy"]').isVisible()) {
+  await page.fill('#kg-pass', PASS); await page.fill('#kg-confirm', PASS); await page.click('text=Encrypt & migrate');
+} else if (await page.locator('[data-testid="keygate-locked"]').isVisible()) {
+  await page.fill('#kg-pass', PASS); await page.click('button:has-text("Unlock")');
+}
 await page.waitForSelector('[data-testid="sigreq-card"] [data-testid="sigreq-status"]');
 await page.waitForSelector('.live-pill.live');
 await page.evaluate(() => { const s = document.querySelector('.chat-scroll'); if (s) (s as HTMLElement).style.maxHeight = 'none'; });

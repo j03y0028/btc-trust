@@ -18,13 +18,14 @@ export function TrusteeSetup({ wallet, dir, onDone }: { wallet: Wallet; dir: Dir
     ? setOffline({ entry: d, address: '', sig: '' })
     : run(d.fingerprint, async () => { await enrollTrustee(wallet.id, d.cosigner, d.fingerprint); done(d.fingerprint) })
   const prepare = (o: Offline) => run(o.entry.fingerprint, async () => {
+    if (keyring.locked()) throw new Error('Unlock trustee keys first')
     const id = newIdentity(N, o.entry.fingerprint)
     const p = await msgApi.prepare(wallet.id, o.entry.cosigner, id, o.address.trim())
     setOffline({ ...o, id, statement: p.statement, issuedAt: p.issuedAt })
   })
   const submit = (o: Offline) => run(o.entry.fingerprint, async () => {
     await msgApi.register(wallet.id, { cosigner: o.entry.cosigner, signPub: o.id!.signPub, boxPub: o.id!.boxPub, issuedAt: o.issuedAt, btcSignature: o.sig.trim(), popSignature: signDetached(N, o.id!, o.statement!), address: o.address.trim() })
-    keyring.put(wallet.id, o.id!); setOffline(null); done(o.entry.fingerprint)
+    await keyring.put(wallet.id, o.id!); setOffline(null); done(o.entry.fingerprint)
   })
 
   return (

@@ -1,0 +1,98 @@
+{
+  "_source": "Public wallet configs (descriptors/xpubs only) from the regtest dev instance",
+  "wallets": {
+    "trezor-trust-vault-ed1bf5": {
+      "id": "trezor-trust-vault-ed1bf5",
+      "name": "Trezor Trust Vault",
+      "type": "multisig",
+      "network": "regtest",
+      "m": 2,
+      "n": 3,
+      "watchWallet": "btctrust-trezor-trust-vault-ed1bf5",
+      "descriptors": {
+        "receive": "wsh(sortedmulti(2,[5c9e228d/48h/1h/0h/2h]tpubDEGquuorgFNbDrg8vepq1HnaV2mgQu9TcSBgBYfXw4AX8VMgkWqvkxHNuJmiah8iVnA3Hgj4cSvaGAXEnq814yC6hMEreckLsd7zyLL3o76/0/*,[d2130b22/84h/1h/0h]tpubDCV9g7B7J5HLpGKxdRsM5VJuVUrLLwRVJd98D6m5MbyzD9mpZcBLA6uAqqjTg1bDzhm2dAPyZz58m1sAitEckRGHCcLqMZFAN27eTGhqjxM/0/*,[556f0acc/84h/1h/0h]tpubDDLVvu8evjJEArMiDyeKuG1CgYjbXFHhTS5PNqNckq4u4u74hyQvynvC2wsph7Yfc8hg1UBYycTgobWydHf95ToFWvUUqm7ufHgvoo3gAc9/0/*))#7xxw6v4y",
+        "change": "wsh(sortedmulti(2,[5c9e228d/48h/1h/0h/2h]tpubDEGquuorgFNbDrg8vepq1HnaV2mgQu9TcSBgBYfXw4AX8VMgkWqvkxHNuJmiah8iVnA3Hgj4cSvaGAXEnq814yC6hMEreckLsd7zyLL3o76/1/*,[d2130b22/84h/1h/0h]tpubDCV9g7B7J5HLpGKxdRsM5VJuVUrLLwRVJd98D6m5MbyzD9mpZcBLA6uAqqjTg1bDzhm2dAPyZz58m1sAitEckRGHCcLqMZFAN27eTGhqjxM/1/*,[556f0acc/84h/1h/0h]tpubDDLVvu8evjJEArMiDyeKuG1CgYjbXFHhTS5PNqNckq4u4u74hyQvynvC2wsph7Yfc8hg1UBYycTgobWydHf95ToFWvUUqm7ufHgvoo3gAc9/1/*))#vn66er58"
+      },
+      "cosigners": [
+        {
+          "label": "Jordan's Trezor",
+          "fingerprint": "5c9e228d",
+          "key": "[5c9e228d/48h/1h/0h/2h]tpubDEGquuorgFNbDrg8vepq1HnaV2mgQu9TcSBgBYfXw4AX8VMgkWqvkxHNuJmiah8iVnA3Hgj4cSvaGAXEnq814yC6hMEreckLsd7zyLL3o76/0/*",
+          "kind": "hardware",
+          "device": {
+            "type": "trezor",
+            "model": "trezor_t_simulator",
+            "label": "BTC Trust Emu"
+          },
+          "local": false
+        },
+        {
+          "label": "Paper backup",
+          "fingerprint": "d2130b22",
+          "key": "[d2130b22/84h/1h/0h]tpubDCV9g7B7J5HLpGKxdRsM5VJuVUrLLwRVJd98D6m5MbyzD9mpZcBLA6uAqqjTg1bDzhm2dAPyZz58m1sAitEckRGHCcLqMZFAN27eTGhqjxM/0/*",
+          "kind": "airgapped",
+          "local": false
+        },
+        {
+          "label": "Trustee (node)",
+          "fingerprint": "556f0acc",
+          "key": "[556f0acc/84h/1h/0h]tpubDDLVvu8evjJEArMiDyeKuG1CgYjbXFHhTS5PNqNckq4u4u74hyQvynvC2wsph7Yfc8hg1UBYycTgobWydHf95ToFWvUUqm7ufHgvoo3gAc9/0/*",
+          "kind": "software",
+          "local": true
+        }
+      ],
+      "createdAt": "2026-10-03T03:02:31.055Z"
+    },
+    "board-reserve-c49ef7": {
+      "id": "board-reserve-c49ef7",
+      "name": "Board Reserve",
+      "type": "multisig",
+      "network": "regtest",
+      "m": 3,
+      "n": 5,
+      "watchWallet": "btctrust-board-reserve-c49ef7",
+      "descriptors": {
+        "receive": "wsh(sortedmulti(3,[c6e45c5c/84h/1h/0h]tpubDDbEoR4tCpDFQyRDWDwKUSFsDQHVNm3pZ3t3cyWwwuXG4Loq2HcFPZA856GpwzDnLMEykmzVoxv7XxStE3ewf9Muc426NJjcLXP8Wgmg2WQ/0/*,[25e1430e/84h/1h/0h]tpubDCMznz9gCR4X3HxRpii1JD28AuCwy8KTTd7yAxhXNLHGcQteLBDvhNEA4JwFNuZJXfBqAKdDUdWMW9gsacx4kQAgeKuAsT8GsvTyrqHZUMa/0/*,[cbb91e3e/84h/1h/0h]tpubDCH8Y5ocbYkW4jQgi2wkXhQctKmKRpfoycoKeVKMS2coNtPr6KC2gW6fZ16KZ8WDFhVGNr1YxPVkJRjK67U5p4MK1tCj53irRvZaWFqf6BM/0/*,[ed512798/84h/1h/0h]tpubDDsASPm6w95yG8ofPEqWMfnTNd7Su6j3asqzvYw9h6rmhtCUZCbsVkssg8J7gm9MQ28UVvqkbqxkjCyR8ZANXEaWG8GJtKxmGhKGKXwSeqw/0/*,[a4e52517/84h/1h/0h]tpubDChbBogzsYAf8J53sGfwa1G9oiccLFChJTbSZhHtb3i2CM7hKEPVrG6syMrF6CfA2fFFb5Lnm9oi8Tf1i4sEgBpNSw1j8Hj1FmAu4tyVhWY/0/*))#m8c0y6xy",
+        "change": "wsh(sortedmulti(3,[c6e45c5c/84h/1h/0h]tpubDDbEoR4tCpDFQyRDWDwKUSFsDQHVNm3pZ3t3cyWwwuXG4Loq2HcFPZA856GpwzDnLMEykmzVoxv7XxStE3ewf9Muc426NJjcLXP8Wgmg2WQ/1/*,[25e1430e/84h/1h/0h]tpubDCMznz9gCR4X3HxRpii1JD28AuCwy8KTTd7yAxhXNLHGcQteLBDvhNEA4JwFNuZJXfBqAKdDUdWMW9gsacx4kQAgeKuAsT8GsvTyrqHZUMa/1/*,[cbb91e3e/84h/1h/0h]tpubDCH8Y5ocbYkW4jQgi2wkXhQctKmKRpfoycoKeVKMS2coNtPr6KC2gW6fZ16KZ8WDFhVGNr1YxPVkJRjK67U5p4MK1tCj53irRvZaWFqf6BM/1/*,[ed512798/84h/1h/0h]tpubDDsASPm6w95yG8ofPEqWMfnTNd7Su6j3asqzvYw9h6rmhtCUZCbsVkssg8J7gm9MQ28UVvqkbqxkjCyR8ZANXEaWG8GJtKxmGhKGKXwSeqw/1/*,[a4e52517/84h/1h/0h]tpubDChbBogzsYAf8J53sGfwa1G9oiccLFChJTbSZhHtb3i2CM7hKEPVrG6syMrF6CfA2fFFb5Lnm9oi8Tf1i4sEgBpNSw1j8Hj1FmAu4tyVhWY/1/*))#vjdjz3s5"
+      },
+      "cosigners": [
+        {
+          "label": "Jordan",
+          "fingerprint": "c6e45c5c",
+          "key": "[c6e45c5c/84h/1h/0h]tpubDDbEoR4tCpDFQyRDWDwKUSFsDQHVNm3pZ3t3cyWwwuXG4Loq2HcFPZA856GpwzDnLMEykmzVoxv7XxStE3ewf9Muc426NJjcLXP8Wgmg2WQ/0/*",
+          "kind": "software",
+          "local": true
+        },
+        {
+          "label": "Ana",
+          "fingerprint": "25e1430e",
+          "key": "[25e1430e/84h/1h/0h]tpubDCMznz9gCR4X3HxRpii1JD28AuCwy8KTTd7yAxhXNLHGcQteLBDvhNEA4JwFNuZJXfBqAKdDUdWMW9gsacx4kQAgeKuAsT8GsvTyrqHZUMa/0/*",
+          "kind": "software",
+          "local": true
+        },
+        {
+          "label": "Marcus",
+          "fingerprint": "cbb91e3e",
+          "key": "[cbb91e3e/84h/1h/0h]tpubDCH8Y5ocbYkW4jQgi2wkXhQctKmKRpfoycoKeVKMS2coNtPr6KC2gW6fZ16KZ8WDFhVGNr1YxPVkJRjK67U5p4MK1tCj53irRvZaWFqf6BM/0/*",
+          "kind": "software",
+          "local": true
+        },
+        {
+          "label": "Lee",
+          "fingerprint": "ed512798",
+          "key": "[ed512798/84h/1h/0h]tpubDDsASPm6w95yG8ofPEqWMfnTNd7Su6j3asqzvYw9h6rmhtCUZCbsVkssg8J7gm9MQ28UVvqkbqxkjCyR8ZANXEaWG8GJtKxmGhKGKXwSeqw/0/*",
+          "kind": "software",
+          "local": true
+        },
+        {
+          "label": "Vault Co.",
+          "fingerprint": "a4e52517",
+          "key": "[a4e52517/84h/1h/0h]tpubDChbBogzsYAf8J53sGfwa1G9oiccLFChJTbSZhHtb3i2CM7hKEPVrG6syMrF6CfA2fFFb5Lnm9oi8Tf1i4sEgBpNSw1j8Hj1FmAu4tyVhWY/0/*",
+          "kind": "software",
+          "local": true
+        }
+      ],
+      "createdAt": "2026-10-03T02:41:52.202Z"
+    }
+  }
+}

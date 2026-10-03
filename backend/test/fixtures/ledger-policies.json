@@ -1,0 +1,28 @@
+[
+  {
+    "walletId": "trezor-trust-vault-ed1bf5",
+    "name": "Trezor Trust Vault",
+    "template": "wsh(sortedmulti(2,@0/**,@1/**,@2/**))",
+    "keys": [
+      "[5c9e228d/48'/1'/0'/2']tpubDEGquuorgFNbDrg8vepq1HnaV2mgQu9TcSBgBYfXw4AX8VMgkWqvkxHNuJmiah8iVnA3Hgj4cSvaGAXEnq814yC6hMEreckLsd7zyLL3o76",
+      "[d2130b22/84'/1'/0']tpubDCV9g7B7J5HLpGKxdRsM5VJuVUrLLwRVJd98D6m5MbyzD9mpZcBLA6uAqqjTg1bDzhm2dAPyZz58m1sAitEckRGHCcLqMZFAN27eTGhqjxM",
+      "[556f0acc/84'/1'/0']tpubDDLVvu8evjJEArMiDyeKuG1CgYjbXFHhTS5PNqNckq4u4u74hyQvynvC2wsph7Yfc8hg1UBYycTgobWydHf95ToFWvUUqm7ufHgvoo3gAc9"
+    ],
+    "id": "cc377f1e166d665495b2c6cf42546f6be0c134b70d40b82c41262f9d29c4b506",
+    "serialized": "02125472657a6f72205472757374205661756c742545cff6017af8edc8b6bb6cdb8634ff05e1a82a7f7962d114045d2bd666e1a16e03db3da635a098708e14d840071e514499fcdd8b48b4c6ef52a0f3479d5f288658"
+  },
+  {
+    "walletId": "board-reserve-c49ef7",
+    "name": "Board Reserve",
+    "template": "wsh(sortedmulti(3,@0/**,@1/**,@2/**,@3/**,@4/**))",
+    "keys": [
+      "[c6e45c5c/84'/1'/0']tpubDDbEoR4tCpDFQyRDWDwKUSFsDQHVNm3pZ3t3cyWwwuXG4Loq2HcFPZA856GpwzDnLMEykmzVoxv7XxStE3ewf9Muc426NJjcLXP8Wgmg2WQ",
+      "[25e1430e/84'/1'/0']tpubDCMznz9gCR4X3HxRpii1JD28AuCwy8KTTd7yAxhXNLHGcQteLBDvhNEA4JwFNuZJXfBqAKdDUdWMW9gsacx4kQAgeKuAsT8GsvTyrqHZUMa",
+      "[cbb91e3e/84'/1'/0']tpubDCH8Y5ocbYkW4jQgi2wkXhQctKmKRpfoycoKeVKMS2coNtPr6KC2gW6fZ16KZ8WDFhVGNr1YxPVkJRjK67U5p4MK1tCj53irRvZaWFqf6BM",
+      "[ed512798/84'/1'/0']tpubDDsASPm6w95yG8ofPEqWMfnTNd7Su6j3asqzvYw9h6rmhtCUZCbsVkssg8J7gm9MQ28UVvqkbqxkjCyR8ZANXEaWG8GJtKxmGhKGKXwSeqw",
+      "[a4e52517/84'/1'/0']tpubDChbBogzsYAf8J53sGfwa1G9oiccLFChJTbSZhHtb3i2CM7hKEPVrG6syMrF6CfA2fFFb5Lnm9oi8Tf1i4sEgBpNSw1j8Hj1FmAu4tyVhWY"
+    ],
+    "id": "807c801246c41bd12adbc15d15c3768a4f703a9eaab25e6cfca1f6e041020d9c",
+    "serialized": "020d426f6172642052657365727665314e45a592b6f11e79d825d09bd4dce6e04764edfb1831bf525d8fd17891e678900597f0b03a507b0fcaed3bc915c31f18ce7816f3b5e41ec3557ba831c73cc6ce48"
+  }
+]

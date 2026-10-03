@@ -16,15 +16,15 @@ const STAGES: { id: number; title: string; achievements: string[] }[] = [
   { id: 4, title: 'Trust Vault', achievements: ['scrypt + AES-256-GCM encrypted trust documents', 'Wallet-signature second factor', 'SHA-256 versions anchored via regtest OP_RETURN', 'Encrypted backup / restore'] },
   { id: 5, title: 'Trustee Messaging', achievements: ['End-to-end encryption (X25519 / XSalsa20-Poly1305 / Ed25519)', 'signmessage attestations and PSBT signature requests', 'WebSocket delivery, offline queue, urgent escalation'] },
   { id: 6, title: 'Timeline & Goals', achievements: ['FRED macro series (CPI, M2, fed funds, GDP, unemployment) cached with source + fetch date', 'Cited U.S. economy events alongside Bitcoin milestones', 'White paper bundled after SHA-256 verification; genesis headline decoded from mainnet data', 'Read-only daily mainnet snapshots cross-checked across mempool.space and blockstream.info'] },
+  { id: 7, title: 'Hardening', achievements: ['Trustee keys encrypted in the browser (scrypt + AES-256-GCM) with idle auto-lock and v1 migration', 'Browser re-verifies every BIP-137 key attestation instead of trusting the server', 'Coldcard multisig setup file + Ledger BIP-388 policy (mock device); Trezor needs no registration', 'Animated BC-UR crypto-psbt QR export and camera/paste import', 'Security review: Host/Origin guards, rate limits, helmet + CSP, owner-only data files, npm audit clean'] },
 ];
 
 export const BACKLOG = [
-  { title: 'Encrypt messaging keys at rest', detail: 'Wrap trustee X25519/Ed25519 secrets with the vault KDF instead of storing them in plaintext under data/.' },
-  { title: 'Ledger & Coldcard registration', detail: 'Register multisig wallet policies / descriptors on Ledger and Coldcard so they can display and verify the change addresses.' },
-  { title: 'Animated QR (BBQr / UR)', detail: 'Move large PSBTs between air-gapped devices as multi-frame QR codes.' },
   { title: 'Tor transport', detail: 'Route trustee messaging and node RPC over Tor onion services.' },
   { title: 'myNode packaging', detail: 'Ship as a myNode app that reads from the local node (getblockchaininfo) instead of public APIs.' },
-  { title: 'Independent security audit', detail: 'External review of the crypto, key handling and PSBT flows before any mainnet use.' },
+  { title: 'Independent security audit', detail: 'External review of the crypto, key handling and PSBT flows before any mainnet use (see docs/security-review.md).' },
+  { title: 'Real-device Ledger & Coldcard validation', detail: 'Register the BIP-388 policy on a physical Ledger (ledger_bitcoin) and import the setup file on a Coldcard; Stage 7 verified them against a mock and bitcoind only.' },
+  { title: 'API authentication', detail: 'Per-trustee login for the API before it is exposed beyond localhost (today it relies on loopback binding + Host/Origin checks).' },
 ];
 
 function countTree(root: string, dir: string, exts = /\.test\.tsx?$/): number {

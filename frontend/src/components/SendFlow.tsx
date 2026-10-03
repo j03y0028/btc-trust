@@ -3,10 +3,13 @@ import { ApiError, btc, deviceApi, deviceName, walletApi, type HwDevice, type Ps
 import { SigRing } from './SigRing'
 import { KindBadge } from './KindBadge'
 import { QrCode } from './QrCode'
+import { AnimatedQr, UrScanner } from './AnimatedQr'
 import { RequestSignature } from './RequestSignature'
 
 /** Single-frame QR limit for base64 PSBTs (version 40, low ECC ≈ 2.9 KB; keep margin for scanners). */
 export const QR_MAX = 2200
+/** Above this size an animated UR is easier to scan than one dense QR. */
+export const UR_FROM = 600
 
 export function SendFlow({ wallet, onDone }: { wallet: WalletDetail; onDone: () => void }) {
   const [address, setAddress] = useState('')
@@ -23,6 +26,8 @@ export function SendFlow({ wallet, onDone }: { wallet: WalletDetail; onDone: () 
   const [log, setLog] = useState<{ text: string; tone: 'ok' | 'warn' }[]>([])
   const [airgap, setAirgap] = useState(false)
   const [showQr, setShowQr] = useState(false)
+  const [qrMode, setQrMode] = useState<'auto' | 'ur' | 'single'>('auto')
+  const [scan, setScan] = useState(false)
   const [requesting, setRequesting] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
 
@@ -157,15 +162,20 @@ export function SendFlow({ wallet, onDone }: { wallet: WalletDetail; onDone: () 
                   <button className="btn small ghost" onClick={() => setShowQr((v) => !v)}>{showQr ? 'Hide QR' : '▦ Show QR'}</button>
                   <button className="btn small ghost" onClick={() => { navigator.clipboard?.writeText(psbt.psbt); setCopied(true); setTimeout(() => setCopied(false), 1500) }}>{copied ? 'Copied ✓' : 'Copy base64'}</button>
                 </div>
-                {showQr && (psbt.psbt.length <= QR_MAX
-                  ? <div className="psbt-qr"><QrCode value={psbt.psbt} size={200} /><span className="hint">{psbt.psbt.length} chars · single-frame QR</span></div>
-                  : <p className="hint warn-text">This PSBT is {psbt.psbt.length} chars, too large for a single QR. Use the .psbt file (animated UR/BBQr QR is planned).</p>)}
+                {showQr && (psbt.psbt.length > QR_MAX || qrMode === 'ur' || (qrMode === 'auto' && psbt.psbt.length > UR_FROM)
+                  ? <div className="psbt-qr"><AnimatedQr psbt={psbt.psbt} size={220} /><span className="hint">{psbt.psbt.length} chars · animated BC-UR (fountain codes) · scan with Sparrow, Keystone, Passport…</span>
+                      {psbt.psbt.length <= QR_MAX && <button className="link small" onClick={() => setQrMode('single')}>Show as one QR</button>}</div>
+                  : <div className="psbt-qr"><QrCode value={psbt.psbt} size={200} /><span className="hint">{psbt.psbt.length} chars · single-frame QR</span><button className="link small" onClick={() => setQrMode('ur')}>Animated UR</button></div>)}
               </div>
               <div className="airgap-col">
                 <span className="field-label">2 · Import signed PSBT</span>
                 <input ref={fileRef} type="file" accept=".psbt,.txt,application/octet-stream,text/plain" hidden data-testid="psbt-file"
                   onChange={async (e) => { const f = e.target.files?.[0]; if (f) importData(await f.arrayBuffer(), f.name); e.target.value = '' }} />
-                <button className="btn small" onClick={() => fileRef.current?.click()} disabled={!!busy}>⬆ Import .psbt file</button>
+                <div className="psbt-actions">
+                  <button className="btn small" onClick={() => fileRef.current?.click()} disabled={!!busy}>⬆ Import .psbt file</button>
+                  <button className="btn small ghost" onClick={() => setScan((v) => !v)} disabled={!!busy}>{scan ? 'Stop scanning' : '◫ Scan animated QR'}</button>
+                </div>
+                {scan && <UrScanner onClose={() => setScan(false)} onPsbt={(b64) => { setScan(false); importData(b64, 'scanned UR QR') }} />}
                 <textarea rows={3} value={imported} onChange={(e) => setImported(e.target.value)} placeholder="…or paste base64 / hex PSBT" spellCheck={false} />
                 <button className="btn small ghost" disabled={!imported.trim() || !!busy} onClick={() => importData(imported.trim(), 'pasted PSBT')}>Merge signatures</button>
               </div>

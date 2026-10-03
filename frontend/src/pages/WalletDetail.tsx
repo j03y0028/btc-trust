@@ -2,11 +2,12 @@ import { useCallback, useEffect, useState } from 'react'
 import { btc, fmt, initial, walletApi, walletKind, type WalletDetail as WD } from '../lib/api'
 import { navigate } from '../lib/router'
 import { QrCode } from '../components/QrCode'
+import { DeviceRegistration } from '../components/DeviceRegistration'
 import { Modal } from '../components/Modal'
 import { SendFlow } from '../components/SendFlow'
 import { KindBadge } from '../components/KindBadge'
 
-type Tab = 'activity' | 'utxos' | 'keys'
+type Tab = 'activity' | 'utxos' | 'keys' | 'devices'
 
 export function WalletDetail({ id }: { id: string }) {
   const [w, setW] = useState<WD | null>(null)
@@ -101,13 +102,14 @@ export function WalletDetail({ id }: { id: string }) {
 
       <section className="glass card tabs-card">
         <div className="tabs" role="tablist">
-          {(['activity', 'utxos', 'keys'] as Tab[]).map((t) => (
+          {((w.type === 'multisig' || w.type === 'watchonly' ? ['activity', 'utxos', 'keys', 'devices'] : ['activity', 'utxos', 'keys']) as Tab[]).map((t) => (
             <button key={t} role="tab" aria-selected={tab === t} className={tab === t ? 'active' : ''} onClick={() => setTab(t)}>
-              {t === 'activity' ? `Activity (${w.history.length})` : t === 'utxos' ? `UTXOs (${w.utxos.length})` : `Keys (${w.n})`}
+              {t === 'activity' ? `Activity (${w.history.length})` : t === 'utxos' ? `UTXOs (${w.utxos.length})` : t === 'keys' ? `Keys (${w.n})` : 'Device registration'}
             </button>
           ))}
         </div>
 
+        {tab === 'devices' && <DeviceRegistration walletId={w.id} />}
         {tab === 'activity' && (
           <ul className="history">
             {w.history.length === 0 && <li className="muted">No transactions yet. Use the regtest faucet to fund this wallet.</li>}

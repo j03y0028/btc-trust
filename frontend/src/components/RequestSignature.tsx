@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { btc, type PsbtInfo, type Wallet } from '../lib/api'
 import { navigate } from '../lib/router'
-import { dmThreadId, keyring, msgApi, seal, sendEnvelope, type DirectoryEntry, type Identity } from '../lib/messaging'
+import { checkDirectory, dmThreadId, keyring, msgApi, seal, sendEnvelope, type DirectoryEntry, type Identity } from '../lib/messaging'
+import { KeyGate, useKeyState } from './KeyGate'
 import { Modal } from './Modal'
 
 /** From the PSBT screen: notify trustees over the encrypted channel and link the PSBT for them to sign. */
@@ -13,11 +14,13 @@ export function RequestSignature({ wallet, psbt, onClose, onSent }: { wallet: Wa
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [done, setDone] = useState<string | null>(null)
+  const keyState = useKeyState()
   const actingFp = keyring.acting(wallet.id) ?? keyring.all(wallet.id)[0]?.fingerprint
   const me = actingFp ? keyring.get(wallet.id, actingFp) : undefined
 
   useEffect(() => {
-    msgApi.directory(wallet.id).then((d) => {
+    msgApi.directory(wallet.id).then((raw) => {
+      const d = checkDirectory(wallet.id, raw)
       setDir(d)
       setFrom(d.filter((x) => x.identity && x.fingerprint !== me?.fingerprint && !psbt.signedBy.includes(x.fingerprint)).map((x) => x.fingerprint))
     }).catch((e) => setError(e.message))
@@ -42,7 +45,7 @@ export function RequestSignature({ wallet, psbt, onClose, onSent }: { wallet: Wa
 
   return (
     <Modal title="Request signature" onClose={onClose}>
-      {!dir ? <div className="muted">Loading trustees…</div> : !registered ? (
+      {keyState !== 'unlocked' ? <KeyGate><span /></KeyGate> : !dir ? <div className="muted">Loading trustees…</div> : !registered ? (
         <div className="form">
           <p className="hint">You need a verified trustee identity on this device to send encrypted requests.</p>
           <button className="btn primary" onClick={() => navigate(`/messages/${wallet.id}`)}>Set up trustee messaging</button>

@@ -19,7 +19,8 @@
     "screenshot:stage5": "backend/node_modules/.bin/tsx scripts/screenshot-stage5.mts",
     "daily:snapshot": "sh -c 'set -a; [ -f .env ] && . ./.env; set +a; exec backend/node_modules/.bin/tsx backend/src/cli/daily-snapshot.ts'",
     "whitepaper:bundle": "backend/node_modules/.bin/tsx backend/src/cli/fetch-whitepaper.ts",
-    "screenshot:stage6": "backend/node_modules/.bin/tsx scripts/screenshot-stage6.mts"
+    "screenshot:stage6": "backend/node_modules/.bin/tsx scripts/screenshot-stage6.mts",
+    "screenshot:stage7": "backend/node_modules/.bin/tsx scripts/screenshot-stage7.mts"
   },
   "devDependencies": {
     "playwright": "^1.63.0"

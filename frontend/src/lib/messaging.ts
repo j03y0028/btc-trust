@@ -1,5 +1,7 @@
 import nacl from 'tweetnacl'
 import { ApiError, type PsbtInfo } from './api'
+import { keyStore } from './keystore'
+import { verifyAttestation, type MsgVerify } from './btcmessage'
 import {
   authToken, dmThreadId, newIdentity, openMessage, sealMessage, signDetached, signReceipt, TamperError,
   type Body, type Envelope, type Nacl, type PublicIdentity, type Receipt, type SecretIdentity,
@@ -13,7 +15,19 @@ export interface Identity extends PublicIdentity {
   cosigner: number; label: string; kind: string; issuedAt: string; statement: string; btcAddress: string; btcPath: string
   btcSignature: string; attestedAt: string; safetyNumber: string; verified: true
 }
-export interface DirectoryEntry { cosigner: number; fingerprint: string; label: string; kind: string; identity: Identity | null; previousKeys: string[] }
+export interface DirectoryEntry { cosigner: number; fingerprint: string; label: string; kind: string; identity: Identity | null; previousKeys: string[]; browserCheck?: MsgVerify; rejected?: Identity }
+
+/**
+ * Re-verify every attestation in the browser (statement binds the keys + BIP-137 signature by the cosigner's key).
+ * Identities that fail are dropped (moved to `rejected`) so they are never used for encryption or signature checks.
+ */
+export function checkDirectory(walletId: string, dir: DirectoryEntry[]): DirectoryEntry[] {
+  return dir.map((d) => {
+    if (!d.identity) return d
+    const browserCheck = verifyAttestation(walletId, { ...d.identity, fingerprint: d.fingerprint, label: d.identity.label ?? d.label })
+    return browserCheck.ok ? { ...d, browserCheck } : { ...d, identity: null, rejected: d.identity, browserCheck }
+  })
+}
 export interface Thread {
   id: string; kind: 'group' | 'direct'; members: string[]; count: number; unread: number; urgentUnread: number
   last: { seq: number; sender: string; createdAt: string; urgent: boolean } | null
@@ -28,22 +42,24 @@ export interface SigRequest {
 export interface Alert { walletId: string; walletName: string; threadId: string; seq: number; sender: string; senderLabel: string; createdAt: string; unreadBy: string[] }
 
 // ---------------- keyring (this device) ----------------
-// Secret keys never leave the browser. Each trustee would normally hold only their own key on their own device;
-// this demo keyring can hold several so one browser can act as different trustees.
-const KEYRING = 'btctrust-trustee-keys-v1'
+// Secret keys never leave the browser and are encrypted at rest (lib/keystore.ts: scrypt + AES-256-GCM).
+// Each trustee would normally hold only their own key on their own device; this demo keyring can hold several
+// so one browser can act as different trustees. While locked, the keyring reads as empty.
 const ACTING = 'btctrust-acting-v1'
 type Ring = Record<string, Record<string, { current: SecretIdentity; previous: SecretIdentity[] }>>
-const readRing = (): Ring => { try { return JSON.parse(localStorage.getItem(KEYRING) ?? '{}') } catch { return {} } }
+const readRing = (): Ring => (keyStore.ring ?? {}) as Ring
 export const keyring = {
+  locked: () => keyStore.state() !== 'unlocked',
   all: (walletId: string) => Object.values(readRing()[walletId] ?? {}).map((e) => e.current),
   get: (walletId: string, fp: string) => readRing()[walletId]?.[fp]?.current,
   candidates: (walletId: string, fp: string) => { const e = readRing()[walletId]?.[fp]; return e ? [e.current, ...e.previous] : [] },
-  put: (walletId: string, id: SecretIdentity) => {
-    const r = readRing(); r[walletId] ??= {}
+  /** Store a new identity (encrypted). Resolves once the ciphertext is written. */
+  put: (walletId: string, id: SecretIdentity) => keyStore.update((raw) => {
+    const r = raw as Ring
+    r[walletId] ??= {}
     const prev = r[walletId][id.fingerprint]
     r[walletId][id.fingerprint] = { current: id, previous: prev ? [prev.current, ...prev.previous].filter((p) => p.signPub !== id.signPub) : [] }
-    localStorage.setItem(KEYRING, JSON.stringify(r))
-  },
+  }),
   acting: (walletId: string): string | undefined => { try { return JSON.parse(localStorage.getItem(ACTING) ?? '{}')[walletId] } catch { return undefined } },
   setActing: (walletId: string, fp: string) => {
     let a: Record<string, string> = {}
@@ -86,11 +102,12 @@ export const msgApi = {
 
 /** Create keys in the browser, have the cosigner's Bitcoin key sign the binding, and register the public half. */
 export async function enrollTrustee(walletId: string, cosigner: number, fingerprint: string, signature?: (statement: string, address: string) => Promise<string>, address?: string) {
+  if (keyring.locked()) throw new Error('Unlock trustee keys before enrolling')
   const id = newIdentity(N, fingerprint)
   const prep = await msgApi.prepare(walletId, cosigner, id, address)
   const btcSignature = signature ? await signature(prep.statement, prep.address) : (await msgApi.signAttestation(walletId, cosigner, prep.statement)).signature
   const reg = await msgApi.register(walletId, { cosigner, signPub: id.signPub, boxPub: id.boxPub, issuedAt: prep.issuedAt, btcSignature, popSignature: signDetached(N, id, prep.statement), address })
-  keyring.put(walletId, id)
+  await keyring.put(walletId, id)
   return reg
 }
 

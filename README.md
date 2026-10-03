@@ -71,6 +71,9 @@ screenshots/stage1.png
 | `GET /api/timeline[?since=YYYY-MM-DD]`, `POST /api/timeline/refresh` | FRED series (cached, with fetch date + source URL), cited events, verified genesis/halving data, white-paper hash check |
 | `GET /api/mainnet/daily`, `POST /api/mainnet/snapshot` | read-only mainnet daily log, streak, blocks since genesis, next-halving estimate / take today's snapshot (idempotent) |
 | `GET /api/progress` | stages with achievements, commit hashes and test counts from git, plus the backlog |
+| `GET /api/wallets/:id/registration` | per-cosigner registration needs (Trezor: none), connected devices, recorded registrations |
+| `GET /api/wallets/:id/registration/coldcard[.txt]`, `POST …/coldcard/confirm` | Coldcard multisig setup file (JSON preview or download) / record that it was imported |
+| `POST /api/wallets/:id/registration/ledger`, `GET …/ledger/:cosigner/verify` | BIP-388 wallet policy registration (**mock Ledger**) → policy id + HMAC / re-check the stored HMAC |
 | `POST /api/regtest/{mine,fund}` | **regtest only**: mine blocks, or send coins from the faucet wallet |
 
 ### Wallet model (Stage 2)
@@ -165,18 +168,38 @@ npm run screenshot:stage6         # stage6-timeline.png, stage6-goals.png
 bash scripts/regtest-node.sh cli -generate 1   # mine a block and watch the dashboard update
 ```
 
+### Hardening (Stage 7)
+- **Encrypted trustee keys (browser):** messaging secrets live in `localStorage` only as an scrypt (N=2^17, r=8, p=1) + AES-256-GCM
+  keyring (`frontend/src/lib/keystore.ts`). Unlock with a passphrase (≥10 chars); it auto-locks after 5 min idle and the key is held in memory only.
+  An old plaintext v1 keyring is encrypted, verified by decrypting it back, and only then deleted. The passphrase can be changed (new salt).
+- **Client-side attestation check:** the browser recomputes each identity's attestation statement and verifies the BIP-137 signature against the
+  cosigner address itself (noble secp256k1), so a server that swaps messaging keys is caught (`⚠ Browser check failed`, the identity is not used).
+- **Device registration** (wallet → *Device registration*):
+  - **Trezor:** no registration needed. Trezor validates multisig change from the PSBT's xpubs on every signing; verified on the Trezor emulator.
+  - **Coldcard:** generates the multisig setup file (`Name`, `Policy`, `Format: P2WSH`, `Derivation`, `XFP: tpub`) as a download and a QR.
+    A firmware-rule parser turns it back into a descriptor, and bitcoind confirms the checksum and the first address. Not run on a Coldcard simulator.
+  - **Ledger:** builds the BIP-388 policy `wsh(sortedmulti(m,@0/**,…))` and its policy id, byte-identical to `ledger_bitcoin`'s test vectors.
+    Registration runs against a **mock device** (HMAC-SHA256), because HWI 3.2.0 has no register command and Speculos isn't set up here.
+- **Animated QR (BC-UR `crypto-psbt`):** PSBTs larger than 600 characters export as a fountain-coded multi-frame QR. Import works from the camera
+  (jsQR) or by pasting parts, and tolerates dropped or out-of-order frames.
+- **Security review:** Host allowlist (DNS rebinding), cross-site guard on unsafe methods (CSRF), WebSocket Origin check, rate limits, helmet
+  headers, a production CSP, self-hosted fonts, owner-only data files and `.env`, and a clean `npm audit`. Details and remaining items are in
+  [docs/security-review.md](docs/security-review.md).
+
 ## Roadmap
 0. Foundation ✅ · 1. Node dashboard ✅ · 2. Multisig wallet (2-of-3 P2WSH descriptors) ✅ · 3. Hardware wallets (PSBT/HWI) ✅ ·
-4. Encrypted trust vault ✅ · 5. Trustee messaging ✅ · 6. Timeline (US economy milestones + [white paper](https://bitcoin.org/bitcoin.pdf)), daily mainnet log and goals tracker ✅
+4. Encrypted trust vault ✅ · 5. Trustee messaging ✅ · 6. Timeline (US economy milestones + [white paper](https://bitcoin.org/bitcoin.pdf)), daily mainnet log and goals tracker ✅ ·
+7. Hardening (encrypted trustee keys, device registration, animated UR QR, security review) ✅
 
-Next: encrypt messaging keys at rest · Ledger/Coldcard registration · animated QR · Tor transport · myNode packaging · independent security audit
+Next: Tor transport · myNode packaging · independent security audit · real-device Ledger/Coldcard validation · API authentication
 
 ## myNode deployment notes
 - Set `BITCOIN_RPC_HOST`/`PORT`/`USER`/`PASSWORD` to myNode's bitcoind values (see `/mnt/hdd/mynode/bitcoin/bitcoin.conf`, or the
   RPC credentials shown in the myNode UI under Bitcoin). The default mainnet port is 8332.
 - myNode runs mainnet, so the mainnet guard has to be lifted on purpose (`BITCOIN_NETWORK=main`, `ALLOW_MAINNET=true`).
   Only do this after the wallet stages have been audited. Reading chain data is harmless, but later stages can spend.
-- bitcoind's `rpcallowip` must include the app's container or host IP. In Docker, set `API_HOST=0.0.0.0`.
+- bitcoind's `rpcallowip` must include the app's container or host IP. In Docker, set `API_HOST=0.0.0.0` and list the proxy's hostname in
+  `API_ALLOWED_HOSTS`. The API has no user authentication, so only expose it through an authenticating reverse proxy (see docs/security-review.md).
 - For a production build: `npm --prefix frontend run build`, then serve `frontend/dist` behind the same origin as `/api`
   (myNode's app framework is Docker plus an nginx reverse proxy).
 - Timeline: set `MAINNET_RPC_HOST`/`USER`/`PASSWORD` to myNode's bitcoind and the daily log reads `getblockchaininfo` from your own node,

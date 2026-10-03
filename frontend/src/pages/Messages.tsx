@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { walletApi, walletKind, type Wallet } from '../lib/api'
 import { navigate } from '../lib/router'
 import {
-  LiveChannel, decrypt, dmThreadId, keyring, msgApi, outbox, seal, sendEnvelope, timeOf,
+  LiveChannel, checkDirectory, decrypt, dmThreadId, keyring, msgApi, outbox, seal, sendEnvelope, timeOf,
   type Body, type Decrypted, type DirectoryEntry, type Identity, type LiveEvent, type SecretIdentity, type SigRequest, type StoredMessage, type Thread,
 } from '../lib/messaging'
 import { vaultApi, vaultSession, type Attachment } from '../lib/vault'
@@ -62,7 +62,7 @@ export function MessagesPage({ walletId, initialThread }: { walletId: string; in
   const me = acting ? keyring.get(walletId, acting) : undefined
   const activeRef = useRef(active); activeRef.current = active
 
-  const loadDir = useCallback(() => msgApi.directory(walletId).then(setDir).catch((e) => setError(e.message)), [walletId])
+  const loadDir = useCallback(() => msgApi.directory(walletId).then((d) => setDir(checkDirectory(walletId, d))).catch((e) => setError(e.message)), [walletId])
   useEffect(() => {
     walletApi.list().then((ws) => setWallet(ws.find((w) => w.id === walletId) ?? null)).catch((e) => setError(e.message))
     loadDir()
@@ -155,7 +155,9 @@ export function MessagesPage({ walletId, initialThread }: { walletId: string; in
               <div key={d.fingerprint} className="dir-row" title={d.identity ? `Safety number ${d.identity.safetyNumber}\nAttested by ${d.identity.btcAddress} (${d.identity.btcPath})` : 'Not enrolled'}>
                 <span className="avatar sm">{d.label.slice(0, 1)}</span>
                 <span className="dir-name">{d.label}<KindBadge kind={d.kind as 'software'} /></span>
-                {d.identity ? <span className="verified-badge" data-testid={`verified-${d.fingerprint}`}>✓ Verified</span> : <span className="unverified">Not enrolled</span>}
+                {d.identity ? <span className="verified-badge" data-testid={`verified-${d.fingerprint}`} title="Server verifymessage ✓ · re-verified in this browser (BIP-137 signature + statement)">✓ Verified<i className="vb-local">browser ✓</i></span>
+                  : d.rejected ? <span className="unverified bad" data-testid={`rejected-${d.fingerprint}`} title={d.browserCheck && !d.browserCheck.ok ? d.browserCheck.reason : ''}>⚠ Browser check failed</span>
+                  : <span className="unverified">Not enrolled</span>}
                 {d.identity && <code className="safety">{d.identity.safetyNumber.split(' ').slice(0, 3).join(' ')}…</code>}
                 {d.identity && d.fingerprint !== me.fingerprint && <button className="link small" onClick={() => setActive(dmThreadId(me.fingerprint, d.fingerprint))}>Message</button>}
               </div>

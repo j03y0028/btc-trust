@@ -28,6 +28,9 @@ export interface AppConfig {
   hwi: { mode: 'auto' | 'cli' | 'mock' | 'off'; bin: string; emulators: boolean; timeoutMs: number };
   vault: { idleMs: number; kdfN: number };
   /** Read-only mainnet observation for the timeline. No wallet RPCs are ever sent to this node. */
+  /** API bind address (default loopback) and HTTP hardening. */
+  apiHost: string;
+  security: { allowedHosts: string[]; rateLimit: { general: number; sensitive: number; outbound: number } };
   mainnet: { node: { host: string; port: number; user: string; password: string } | null; snapshots: boolean };
 }
 
@@ -46,6 +49,15 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     rpcPassword: env.BITCOIN_RPC_PASSWORD ?? '',
     rpcTimeoutMs: Number(env.BITCOIN_RPC_TIMEOUT_MS ?? 10000),
     apiPort: Number(env.API_PORT ?? 4000),
+    apiHost: env.API_HOST ?? '127.0.0.1',
+    security: {
+      allowedHosts: (env.API_ALLOWED_HOSTS ?? '').split(',').map((h) => h.trim().toLowerCase()).filter(Boolean),
+      rateLimit: {
+        general: Number(env.RATE_LIMIT_GENERAL ?? 1200),     // requests / minute / IP
+        sensitive: Number(env.RATE_LIMIT_SENSITIVE ?? 30),   // passphrase, identity, signing
+        outbound: Number(env.RATE_LIMIT_OUTBOUND ?? 6),      // triggers calls to public APIs
+      },
+    },
     allowMainnet,
     dataDir: env.DATA_DIR ?? resolve(import.meta.dirname, '../../data'),
     hwi: {
