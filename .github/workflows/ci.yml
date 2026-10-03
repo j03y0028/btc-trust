@@ -24,6 +24,8 @@ jobs:
       BITCOIN_RPC_PASSWORD: ci-throwaway-regtest-only
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # the Goals/progress API reads stage commits from git history
       - uses: actions/setup-node@v4
         with:
           node-version: 22

@@ -122,7 +122,9 @@ describe('trustee identities & attestation', () => {
     expect((await api().get(`/api/messaging/${walletId}/threads`).set(old)).status).toBe(401);
     const t = await api().get(`/api/messaging/${walletId}/threads`).set(auth(ids[0]));
     expect(t.status).toBe(200);
-    expect(t.body.map((x: any) => x.id)).toEqual(['group', dmThreadId(fps[0], fps[1]), dmThreadId(fps[0], fps[2])]);
+    const [first, ...dms] = t.body.map((x: any) => x.id);
+    expect(first).toBe('group');
+    expect(dms.sort()).toEqual([dmThreadId(fps[0], fps[1]), dmThreadId(fps[0], fps[2])].sort()); // DM order follows random fingerprints
   });
 });
 
