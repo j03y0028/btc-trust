@@ -12,6 +12,7 @@ export class MockHwiAdapter implements HwiAdapter {
   connected = true;
   private fp: string | null = null;
   private key: { xpub: string; path: string } | null = null;
+  private legacy: { xpub: string; path: string; desc: string } | null = null;
 
   constructor(private rpc: BitcoinRpc, private walletName = 'btctrust-mock-device', private label = 'Mock Signer') {}
 
@@ -30,6 +31,9 @@ export class MockHwiAdapter implements HwiAdapter {
     const m = d.desc.match(/^wpkh\(\[([0-9a-f]{8})\/([^\]]+)\]([tx]pub[1-9A-HJ-NP-Za-km-z]+)\/0\/\*\)/)!;
     this.fp = m[1];
     this.key = { xpub: m[3], path: `m/${m[2]}` };
+    const p = descriptors.find((x) => x.desc.startsWith('pkh(') && !x.internal)!;
+    const pm = p.desc.match(/^pkh\(\[[0-9a-f]{8}\/([^\]]+)\]([tx]pub[1-9A-HJ-NP-Za-km-z]+)\/0\/\*\)/)!;
+    this.legacy = { xpub: pm[2], path: `m/${pm[1]}`, desc: p.desc };
   }
 
   async version() {
@@ -42,9 +46,18 @@ export class MockHwiAdapter implements HwiAdapter {
     return [{ type: 'mock', model: 'mock_device', path: `mock:${this.walletName}`, label: this.label, fingerprint: this.fp, needsPin: false, needsPassphrase: false, error: null, emulator: true }];
   }
 
-  async getXpub(_dev: HwDevice, _path: string) {
+  async getXpub(_dev: HwDevice, path: string) {
     await this.ensure();
+    // BIP44 requests map to the wallet's pkh account (used for signmessage identity keys); everything else to BIP84.
+    if (path.startsWith('m/44')) return { xpub: this.legacy!.xpub, path: this.legacy!.path };
     return this.key!;
+  }
+
+  async signMessage(_dev: HwDevice, message: string, _path: string) {
+    if (!this.connected) throw new Error('mock device disconnected');
+    await this.ensure();
+    const [address] = await this.rpc.call<string[]>('deriveaddresses', [this.legacy!.desc, [0, 0]]);
+    return this.rpc.call<string>('signmessage', [address, message], this.walletName);
   }
 
   async displayAddress(_dev: HwDevice, descriptor: string) {

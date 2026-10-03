@@ -14,7 +14,8 @@
     "screenshot:stage2": "node scripts/screenshot-stage2.mjs",
     "emu:start": "bash scripts/trezor-emu.sh start",
     "emu:stop": "bash scripts/trezor-emu.sh stop",
-    "screenshot:stage3": "node scripts/screenshot-stage3.mjs"
+    "screenshot:stage3": "node scripts/screenshot-stage3.mjs",
+    "screenshot:stage4": "node scripts/screenshot-stage4.mjs"
   },
   "devDependencies": {
     "playwright": "^1.63.0"

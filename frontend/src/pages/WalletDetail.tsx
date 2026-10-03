@@ -76,6 +76,7 @@ export function WalletDetail({ id }: { id: string }) {
             <button className="btn primary" onClick={() => setSending(true)}>↗ Send</button>
             <button className="btn ghost" disabled={busy} onClick={() => regtest(() => walletApi.fund(id, 5))} title="Regtest faucet: send 5 BTC and confirm">⛲ Faucet 5 BTC</button>
             <button className="btn ghost" disabled={busy} onClick={() => regtest(() => walletApi.mine(1))}>⛏ Mine 1 block</button>
+            <button className="btn ghost" onClick={() => navigate(`/vault/${id}`)} data-testid="open-vault">🔐 Trust vault</button>
           </div>
         </div>
 

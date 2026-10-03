@@ -26,6 +26,7 @@ export interface AppConfig {
   allowMainnet: boolean;
   dataDir: string;
   hwi: { mode: 'auto' | 'cli' | 'mock' | 'off'; bin: string; emulators: boolean; timeoutMs: number };
+  vault: { idleMs: number; kdfN: number };
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
@@ -51,6 +52,10 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
       // Emulators (Trezor emulator, Speculos, Coldcard sim) are only enumerated off-mainnet unless forced.
       emulators: (env.HWI_EMULATORS ?? (network === 'main' ? 'false' : 'true')) === 'true',
       timeoutMs: Number(env.HWI_TIMEOUT_MS ?? 120000),
+    },
+    vault: {
+      idleMs: Number(env.VAULT_IDLE_MS ?? 5 * 60_000),
+      kdfN: Number(env.VAULT_SCRYPT_N ?? 2 ** 17),
     },
   };
 }

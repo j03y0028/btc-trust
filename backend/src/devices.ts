@@ -61,6 +61,15 @@ export class DeviceService {
     return { fingerprint, path, xpub, key: `[${fingerprint}/${origin}]${xpub}/0/*`, device: { type: dev.type, model: dev.model, label: dev.label } };
   }
 
+  /** xpub at an arbitrary path (returns the path actually used). */
+  async rawXpub(fingerprint: string, path: string) {
+    return this.need().getXpub(await this.get(fingerprint), path);
+  }
+
+  async signMessage(fingerprint: string, message: string, path: string) {
+    return this.need().signMessage(await this.get(fingerprint), message, path);
+  }
+
   async display(fingerprint: string, descriptor: string) {
     return this.need().displayAddress(await this.get(fingerprint), descriptor);
   }

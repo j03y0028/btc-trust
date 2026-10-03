@@ -6,6 +6,7 @@ import { Dashboard } from './pages/Dashboard'
 import { Wallets } from './pages/Wallets'
 import { WalletDetail } from './pages/WalletDetail'
 import { Devices } from './pages/Devices'
+import { VaultIndex, VaultPage } from './pages/Vault'
 
 const POLL_MS = 5000
 
@@ -38,7 +39,8 @@ export default function App() {
 
   const query = useQuery(path)
   const walletId = path.match(/^\/wallets\/([^/?]+)/)?.[1]
-  const section = path.startsWith('/wallets') ? 'wallets' : path.startsWith('/devices') ? 'devices' : 'dashboard'
+  const vaultId = path.match(/^\/vault\/([^/?]+)/)?.[1]
+  const section = path.startsWith('/wallets') ? 'wallets' : path.startsWith('/devices') ? 'devices' : path.startsWith('/vault') ? 'vault' : 'dashboard'
   const preset = query.new === 'multisig' || query.new === 'singlesig' ? { choice: query.new as 'multisig' | 'singlesig', hw: query.hw } : undefined
 
   return (
@@ -57,6 +59,7 @@ export default function App() {
           <button className={section === 'dashboard' ? 'active' : ''} onClick={() => navigate('/')}>Dashboard</button>
           <button className={section === 'wallets' ? 'active' : ''} onClick={() => navigate('/wallets')}>Wallets</button>
           <button className={section === 'devices' ? 'active' : ''} onClick={() => navigate('/devices')}>Devices</button>
+          <button className={section === 'vault' ? 'active' : ''} onClick={() => navigate('/vault')}>Vault</button>
         </nav>
         <div className="status">
           {chain && <span className={`net net-${chain.network}`}>{chain.network}</span>}
@@ -71,13 +74,15 @@ export default function App() {
 
       <div key={path} className="route">
         {walletId ? <WalletDetail id={walletId} />
+          : vaultId ? <VaultPage walletId={vaultId} />
+          : section === 'vault' ? <VaultIndex />
           : section === 'wallets' ? <Wallets preset={preset} />
           : section === 'devices' ? <Devices />
           : <Dashboard chain={chain} blocks={blocks} stages={stages} newest={newest} />}
       </div>
 
       <footer className="foot muted">
-        Regtest only · no real funds · private keys never leave bitcoind · <a href="https://bitcoin.org/bitcoin.pdf" target="_blank" rel="noreferrer">Bitcoin white paper</a>
+        Regtest only · no real funds · private keys never leave bitcoind · vault documents encrypted at rest · <a href="https://bitcoin.org/bitcoin.pdf" target="_blank" rel="noreferrer">Bitcoin white paper</a>
       </footer>
     </div>
   )

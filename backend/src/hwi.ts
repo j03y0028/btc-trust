@@ -24,6 +24,8 @@ export interface HwiAdapter {
   displayAddress(dev: HwDevice, descriptor: string): Promise<string>;
   /** Returns the PSBT with the device's signatures added (not finalized). */
   signPsbt(dev: HwDevice, psbt: string): Promise<string>;
+  /** BIP-137/signmessage-compatible signature (base64) with the key at `path`. */
+  signMessage(dev: HwDevice, message: string, path: string): Promise<string>;
 }
 
 const CHAIN: Record<string, string> = { regtest: 'regtest', signet: 'signet', testnet: 'test', testnet4: 'testnet4', main: 'main' };
@@ -107,5 +109,10 @@ export class HwiCliAdapter implements HwiAdapter {
   async signPsbt(dev: HwDevice, psbt: string) {
     const r = await this.run<{ psbt: string; signed?: boolean }>(['signtx', psbt], dev);
     return r.psbt;
+  }
+
+  async signMessage(dev: HwDevice, message: string, path: string) {
+    const r = await this.run<{ signature: string }>(['signmessage', message, path], dev);
+    return r.signature;
   }
 }

@@ -11,6 +11,8 @@ import { Faucet } from './faucet.js';
 import { HwiCliAdapter, type HwiAdapter } from './hwi.js';
 import { MockHwiAdapter } from './hwi-mock.js';
 import { DeviceService, type KeyPurpose } from './devices.js';
+import { VaultService } from './vault/service.js';
+import { vaultRouter } from './vault/routes.js';
 
 export function hwiFromConfig(cfg: AppConfig, rpc: BitcoinRpc): HwiAdapter | null {
   const { mode, bin, emulators, timeoutMs } = cfg.hwi;
@@ -28,9 +30,11 @@ export function createApp(cfg: AppConfig, rpc = new BitcoinRpc(cfg), store = new
   const devices = new DeviceService(hwi, cfg.network);
   const wallets = new WalletService(rpc, store, cfg.network, devices);
   const faucet = new Faucet(rpc, cfg.network);
+  const vault = new VaultService(rpc, wallets, devices, faucet, { dataDir: cfg.dataDir, network: cfg.network, idleMs: cfg.vault.idleMs, kdfN: cfg.vault.kdfN });
   const app = express();
   app.use(cors({ origin: [/^http:\/\/localhost(:\d+)?$/, /^http:\/\/127\.0\.0\.1(:\d+)?$/] }));
-  app.use(express.json({ limit: '2mb' }));
+  // Backup restore can be large; it has its own parser.
+  app.use((req, res, next) => (/^\/api\/vaults\/[^/]+\/restore$/.test(req.path) ? next() : express.json({ limit: '2mb' })(req, res, next)));
   app.use(express.raw({ type: 'application/octet-stream', limit: '2mb' }));
   app.use(express.text({ type: 'text/plain', limit: '2mb' }));
 
@@ -123,6 +127,9 @@ export function createApp(cfg: AppConfig, rpc = new BitcoinRpc(cfg), store = new
   app.post('/api/wallets/:id/psbt/combine', async (req, res) => res.json(await wallets.combine(id(req), req.body?.psbts)));
   app.post('/api/wallets/:id/psbt/finalize', async (req, res) => res.json(await wallets.finalize(id(req), psbtOf(req))));
   app.post('/api/wallets/:id/psbt/broadcast', async (req, res) => res.json(await wallets.broadcast(id(req), psbtOf(req))));
+
+  // ---- Trust vault ----
+  app.use('/api/vaults', vaultRouter(vault));
 
   // ---- Regtest helpers (disabled on every other network) ----
   const target = async (req: Request): Promise<string | undefined> => {

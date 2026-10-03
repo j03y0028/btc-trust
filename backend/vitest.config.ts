@@ -9,6 +9,7 @@ export default defineConfig({
     hookTimeout: 60000,
     fileParallelism: false,
     // Tests use a throwaway wallet store so they never touch the dev data/ directory.
-    env: { DATA_DIR: mkdtempSync(join(tmpdir(), 'btctrust-test-')) },
+    // Lower scrypt cost in tests for speed (production default N=2^17 is asserted separately).
+    env: { DATA_DIR: mkdtempSync(join(tmpdir(), 'btctrust-test-')), VAULT_SCRYPT_N: '16384' },
   },
 });

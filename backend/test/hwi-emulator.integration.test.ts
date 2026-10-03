@@ -82,3 +82,20 @@ describe.skipIf(!hasEmulator)('real HWI + Trezor emulator', () => {
     expect((await api().post(`/api/wallets/${w.body.id}/psbt/broadcast`).send({ psbt: s.body.psbt })).status).toBe(200);
   });
 });
+
+describe.skipIf(!hasEmulator)('vault second factor on the Trezor emulator', () => {
+  const rpc = new BitcoinRpc(cfg);
+  const app = createApp(cfg, rpc, new WalletStore(cfg.dataDir, cfg.network), new HwiCliAdapter({ bin: cfg.hwi.bin, network: 'regtest', emulators: true, timeoutMs: 120000 }));
+  it('Trezor signs the unlock challenge (HWI signmessage) and bitcoind verifies it', async () => {
+    const fp = (await request(app).get('/api/devices?refresh=1')).body.find((d: any) => d.fingerprint).fingerprint;
+    const w = await request(app).post('/api/wallets').send({ name: 'Trezor 2FA', type: 'multisig', hardware: [{ fingerprint: fp }] });
+    const c = await request(app).post(`/api/vaults/${w.body.id}`).send({ passphrase: 'trezor vault passphrase', secondFactor: { cosigner: 0 } });
+    expect(c.status).toBe(201);
+    const ch = (await request(app).post(`/api/vaults/${w.body.id}/unlock`).send({ passphrase: 'trezor vault passphrase' })).body.challenge;
+    expect(ch.path).toBe('m/44h/1h/0h/0/0');
+    const s = await request(app).post(`/api/vaults/${w.body.id}/unlock/sign`).send({ challengeId: ch.id });
+    expect(s.body.signer).toBe('device');
+    const v = await request(app).post(`/api/vaults/${w.body.id}/unlock/verify`).send({ challengeId: ch.id, signature: s.body.signature });
+    expect(v.status).toBe(200);
+  });
+});

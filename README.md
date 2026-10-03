@@ -50,6 +50,16 @@ screenshots/stage1.png
 | `POST /api/wallets/:id/verify-address` | show a receive address on a hardware cosigner and compare it with bitcoind |
 | `GET /api/devices[?refresh=1]`, `GET /api/devices/status` | HWI enumeration and status |
 | `POST /api/devices/:fingerprint/xpub` | `{purpose: multisig\|singlesig}` → `[fp/48h/1h/0h/2h]tpub…/0/*` (BIP48) or BIP84 |
+| `GET /api/vaults/:walletId/status` | vault exists / unlocked, KDF + cipher, second-factor signer |
+| `POST /api/vaults/:walletId` | create `{passphrase, secondFactor?: {cosigner, address?}}` → session |
+| `POST /api/vaults/:walletId/unlock[/sign\|/verify]` | passphrase → session, or a signmessage challenge; `sign` asks the node/device, `verify` checks a pasted signature |
+| `POST /api/vaults/:walletId/{lock,ping}` | end the session / keep it alive |
+| `GET\|POST /api/vaults/:walletId/documents`, `GET\|PUT\|DELETE …/documents/:docId` | encrypted documents; `PUT` adds a SHA-256-hashed version when content changes |
+| `GET /api/vaults/:walletId/templates/:type` | deed, beneficiaries, trustees, succession, descriptor-backup, note, filled from the wallet |
+| `…/documents/:docId/versions/:v/verify`, `POST\|GET …/versions/:v/anchor` | re-hash a version; anchor it on regtest via OP_RETURN / verify it on chain |
+| `POST\|GET …/documents/:docId/attachments[/:attId]` | encrypted PDF/PNG/JPEG/GIF/WebP files (raw body, `x-filename`), max 10 MB |
+| `POST /api/vaults/:walletId/{passphrase,second-factor}` | re-encrypt with a new passphrase / set or clear the wallet-signature factor |
+| `GET /api/vaults/:walletId/backup`, `POST …/restore` | export the encrypted backup (still ciphertext) / verify and restore it `{backup, passphrase, overwrite?}` |
 | `POST /api/regtest/{mine,fund}` | **regtest only**: mine blocks, or send coins from the faucet wallet |
 
 ### Wallet model (Stage 2)
@@ -79,6 +89,16 @@ screenshots/stage1.png
 
 - **Regtest faucet:** `btctrust-faucet` is funded by mining. Regtest halves the block reward every 150 blocks, so on a long chain run `npm run node:reset`.
 
+### Trust vault (Stage 4)
+Each wallet can have one encrypted vault of trust documentation: the deed, beneficiaries, trustees (roles mapped to cosigner fingerprints), succession/recovery instructions, a descriptor backup (public data only) and notes, plus encrypted PDF/image attachments. **The templates are not legal advice.**
+
+- **Crypto (Node's built-in OpenSSL, no custom primitives):** scrypt (N=2^17, r=8, p=1, 16-byte salt) derives a key-encryption key from the passphrase (NFKC-normalized, at least 10 characters). That key wraps a random 256-bit data key with AES-256-GCM. The data key encrypts the document index and each attachment with AES-256-GCM (fresh 96-bit IV). AAD binds every ciphertext to its wallet, its role and, for the index, the second-factor setting, so swapping files, attachments or settings is detected (`422 TAMPERED`).
+- **On disk:** `data/vaults/<walletId>.vault.json` (KDF params, wrapped key, encrypted index) and `data/vaults/<walletId>/<id>.bin` hold ciphertext only. Plaintext and keys stay in server memory for the session only and are zeroed on lock.
+- **Unlock:** a wrong passphrase gives `401`. After 5 failures, unlocking backs off with `429`. Sessions auto-lock after `VAULT_IDLE_MS` of inactivity (default 5 min, with a countdown in the UI). Tokens live in browser memory only, so a reload locks the vault.
+- **Wallet-signature second factor (optional):** after the passphrase, a one-time challenge (5-minute expiry, 3 attempts) must be signed with the chosen cosigner's identity key. That is P2PKH at `m/44h/1h/0h/0/0` of the same seed, verified by bitcoind `verifymessage`. Software cosigners sign with bitcoind `signmessage`, hardware cosigners with HWI `signmessage` (tested on the Trezor emulator), and air-gapped cosigners paste a signature for a P2PKH address they supply.
+- **Integrity:** every version stores the SHA-256 of its content, re-checked on read. A version hash can be anchored on regtest (OP_RETURN `BTV1‖sha256`, funded by the faucet, then a block is mined). Verification shows block height, txid, block hash and confirmations.
+- **Passphrase change:** fully re-encrypts with a new salt and a new data key, re-seals every attachment, and signs out other sessions. **Backup:** a single JSON file that is still ciphertext. Restore verifies the passphrase and every attachment tag before writing anything.
+
 ## Run
 ```bash
 cp .env.example .env              # set RPC credentials (must match bitcoin.conf)
@@ -92,12 +112,13 @@ npm run screenshot:stage2         # stage2-wallets/-wizard/-wallet-detail/-send.
 npm run node:reset                # wipe the regtest chain + wallets
 npm run emu:start                 # headless Trezor emulator + test seed (needs libsdl2-image)
 npm run screenshot:stage3         # stage3-devices/-wizard/-wallet-detail/-sign.png
+npm run screenshot:stage4         # seeds a demo vault (Trezor 2nd factor) → stage4-vault-locked.png, stage4-vault.png
 bash scripts/regtest-node.sh cli -generate 1   # mine a block and watch the dashboard update
 ```
 
 ## Roadmap
 0. Foundation ✅ · 1. Node dashboard ✅ · 2. Multisig wallet (2-of-3 P2WSH descriptors) ✅ · 3. Hardware wallets (PSBT/HWI) ✅ ·
-4. Encrypted trust vault · 5. Trustee messaging · 6. Timeline (US economy milestones + [white paper](https://bitcoin.org/bitcoin.pdf)) and goals tracker
+4. Encrypted trust vault ✅ · 5. Trustee messaging · 6. Timeline (US economy milestones + [white paper](https://bitcoin.org/bitcoin.pdf)) and goals tracker
 
 ## myNode deployment notes
 - Set `BITCOIN_RPC_HOST`/`PORT`/`USER`/`PASSWORD` to myNode's bitcoind values (see `/mnt/hdd/mynode/bitcoin/bitcoin.conf`, or the
