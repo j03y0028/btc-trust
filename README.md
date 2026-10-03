@@ -1,10 +1,60 @@
 # BTC Trust
 
-A self-hosted Bitcoin "family trust" web app: multisig custody, hardware-wallet signing, an encrypted trust-document vault,
-trustee messaging, and an economic timeline. It talks to Bitcoin Core over JSON-RPC and is meant to run on a myNode node later.
+[![CI](https://github.com/j03y0028/btc-trust/actions/workflows/ci.yml/badge.svg)](https://github.com/j03y0028/btc-trust/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-orange.svg)](LICENSE)
 
-> **Safety:** development uses **regtest only**. The backend refuses `BITCOIN_NETWORK=main` unless `ALLOW_MAINNET=true`.
-> Never put real keys or real funds into this project while it is in development.
+A self-hosted Bitcoin **family trust** app for [myNode](https://mynodebtc.com) and other home nodes. It covers multisig custody,
+hardware-wallet signing, an encrypted trust-document vault, private trustee messaging, and an economic timeline. It talks only to your own
+Bitcoin Core over JSON-RPC.
+
+> [!CAUTION]
+> **Testing only: regtest/signet. Not audited. Not for real funds.**
+> - Wallets, vaults, PSBT signing and messaging run on **regtest** (or signet) only. The backend refuses a mainnet wallet node.
+> - On a myNode, mainnet is **read-only**. The app may call only 15 read-only RPC methods, enforced in code *and* by bitcoind `rpcwhitelist`.
+> - **Never import real keys or send real bitcoin to any address this app shows.** See [SECURITY.md](SECURITY.md).
+
+| Dashboard on myNode (split mode) | Multisig wallet | Encrypted trust vault |
+|---|---|---|
+| ![dashboard](screenshots/stage8-dashboard-mynode.png) | ![wallet](screenshots/stage2-wallet-detail.png) | ![vault](screenshots/stage4-vault.png) |
+| **Hardware-wallet signing** | **Trustee messaging** | **Timeline & goals** |
+| ![sign](screenshots/stage3-sign.png) | ![messages](screenshots/stage5-messages.png) | ![timeline](screenshots/stage6-timeline.png) |
+
+## Features by stage
+| Stage | What it adds |
+|---|---|
+| 0 · Foundation | Verified Bitcoin Core 31.1 on regtest, repo scaffold, config with a mainnet guard |
+| 1 · Node dashboard | Live chain stats, mempool, recent blocks |
+| 2 · Multisig wallet | m-of-n P2WSH descriptor wallets (2-of-3 default), single-sig, watch-only, full PSBT lifecycle, regtest faucet |
+| 3 · Hardware wallets | HWI integration (Trezor/Ledger/Coldcard…), PSBT export/import, on-device address verification, software-signer fallback |
+| 4 · Trust vault | Passphrase-encrypted documents (scrypt + AES-256-GCM), templates (deed, beneficiaries, trustees…), attachments, an optional wallet-signature second factor, backups |
+| 5 · Trustee messaging | End-to-end encrypted group and DM threads, keys bound to cosigners by signmessage attestations, signature requests linked to PSBTs |
+| 6 · Timeline & goals | US economic milestones (FRED) vs. the Bitcoin white paper (SHA-256 checked), a daily mainnet block log, and a progress tracker |
+| 7 · Hardening | Trustee keys encrypted in the browser, browser-side attestation checks, Coldcard/Ledger registration, animated BC-UR PSBT QR, security review |
+| 8 · myNode packaging | Read-only mainnet split mode, test-only wallets on a bundled regtest node, app login, Docker image (amd64/arm64), myNode installer |
+
+## Quick start (local regtest)
+Requires Node 20+, plus a Bitcoin Core 31.x `bitcoind` (verify the download against the signed SHA256SUMS).
+```bash
+git clone https://github.com/j03y0028/btc-trust && cd btc-trust
+cp .env.example .env          # set a regtest RPC password; it must match the node
+npm run install:all
+BITCOIN_BIN=/path/to/bitcoin/bin npm run node:start   # regtest bitcoind (or point .env at your own regtest node)
+npm run dev                   # UI http://127.0.0.1:5173 · API http://127.0.0.1:4000
+npm test                      # backend + frontend tests
+```
+Docker: `docker compose --env-file btctrust.env up -d` (see [docker-compose.yml](docker-compose.yml) and [btctrust.env.example](btctrust.env.example)).
+
+## Install on myNode
+Download the release package **on the myNode** and run the installer. The step-by-step guide is
+**[docs/mynode-install.md](docs/mynode-install.md)**. Packages are on the [Releases](https://github.com/j03y0028/btc-trust/releases) page:
+`…-x86_64.tar.gz` for x86 PCs (for example a Beelink mini PC), or the full package for a Raspberry Pi.
+
+## Contributing, security, license
+[CONTRIBUTING.md](CONTRIBUTING.md) · [SECURITY.md](SECURITY.md) · [docs/security-review.md](docs/security-review.md) · MIT, see [LICENSE](LICENSE).
+
+---
+
+# Developer reference
 
 ## Stack
 - **backend/**: Node 20 + TypeScript, Express 5, minimal fetch-based Bitcoin Core RPC client, Vitest + Supertest

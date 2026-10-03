@@ -8,27 +8,53 @@
 ## What you need
 
 - A myNode (Raspberry Pi 4/5 = `aarch64`, or an x86_64 PC) on a recent release (Bitcoin Core 29.x is fine) with Docker running. myNode ships Docker for its Docker-based apps.
-- The package `btctrust-mynode-v0.8.0.tar.gz` (about 180 MB, with images for both CPU types). Build it on a computer with Docker by running `scripts/package-mynode.sh` in the repo; it lands in `build/`.
+- The release package from [GitHub Releases](https://github.com/j03y0028/btc-trust/releases/tag/v0.8.0). Step 1 downloads it directly on the myNode.
 - About 1 GB free on the myNode drive.
 - Port **9330** free (and 9331 for https). No stock myNode app uses either port.
 
-## 1. Copy the package to the myNode
+## 1. Download the package on the myNode
 
-On your computer:
+SSH into the myNode from your computer:
 
 ```bash
-scp build/btctrust-mynode-v0.8.0.tar.gz build/btctrust-mynode-v0.8.0.tar.gz.sha256 admin@mynode.local:~/
-ssh admin@mynode.local        # password = your myNode password
+ssh admin@mynode.local        # password = your myNode password (use the IP address if mynode.local doesn't resolve)
 ```
 
-([myNode: Accessing the Linux Terminal](https://mynodebtc.github.io/advanced/linux-terminal.html). Use the IP address if `mynode.local` doesn't resolve.)
+([myNode: Accessing the Linux Terminal](https://mynodebtc.github.io/advanced/linux-terminal.html))
 
-## 2. Unpack and run the installer (on the myNode)
+Check which CPU it has, then download the matching package **on the myNode**:
 
 ```bash
-sha256sum -c btctrust-mynode-v0.8.0.tar.gz.sha256
+uname -m      # x86_64 = x86 PC (e.g. Beelink mini PC) · aarch64 = Raspberry Pi 4/5 / RockPro64
+```
+
+**x86_64** (Beelink and other x86 mini PCs), about 94 MB:
+
+```bash
+cd ~
+wget https://github.com/j03y0028/btc-trust/releases/download/v0.8.0/btctrust-mynode-v0.8.0-x86_64.tar.gz
+wget https://github.com/j03y0028/btc-trust/releases/download/v0.8.0/btctrust-mynode-v0.8.0-x86_64.tar.gz.sha256
+sha256sum -c btctrust-mynode-v0.8.0-x86_64.tar.gz.sha256      # must print: OK
+tar xzf btctrust-mynode-v0.8.0-x86_64.tar.gz
+```
+
+**aarch64** (Raspberry Pi): use the full package (x86_64 + arm64 images), about 185 MB:
+
+```bash
+cd ~
+wget https://github.com/j03y0028/btc-trust/releases/download/v0.8.0/btctrust-mynode-v0.8.0.tar.gz
+wget https://github.com/j03y0028/btc-trust/releases/download/v0.8.0/btctrust-mynode-v0.8.0.tar.gz.sha256
+sha256sum -c btctrust-mynode-v0.8.0.tar.gz.sha256             # must print: OK
 tar xzf btctrust-mynode-v0.8.0.tar.gz
-cd btctrust-mynode-v0.8.0
+```
+
+Both packages unpack to `~/btctrust-mynode-v0.8.0/`. No `wget`? Use `curl -fLO <url>` instead.
+To build the package yourself instead, run `scripts/package-mynode.sh` on a machine with Docker, then `scp` it over.
+
+## 2. Run the installer (on the myNode)
+
+```bash
+cd ~/btctrust-mynode-v0.8.0
 sudo ./install-mynode.sh
 ```
 

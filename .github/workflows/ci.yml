@@ -1,0 +1,74 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: Backend (unit + regtest integration)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      BITCOIN_VERSION: "31.1"
+      # sha256 of bitcoin-31.1-x86_64-linux-gnu.tar.gz from the GPG-signed SHA256SUMS on bitcoincore.org
+      BITCOIN_SHA256: b80d9c3e04da78fb6f0569685673418cf686fadba9042d926d13fb87ff503f9e
+      BITCOIN_NETWORK: regtest
+      BITCOIN_RPC_HOST: 127.0.0.1
+      BITCOIN_RPC_PORT: "18443"
+      BITCOIN_RPC_USER: ci
+      BITCOIN_RPC_PASSWORD: ci-throwaway-regtest-only
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - name: Install Bitcoin Core ${{ env.BITCOIN_VERSION }} (checksum-pinned)
+        run: |
+          f=bitcoin-${BITCOIN_VERSION}-x86_64-linux-gnu.tar.gz
+          curl -fsSLO "https://bitcoincore.org/bin/bitcoin-core-${BITCOIN_VERSION}/$f"
+          echo "${BITCOIN_SHA256}  $f" | sha256sum -c -
+          tar xzf "$f"
+          sudo install -m 0755 bitcoin-${BITCOIN_VERSION}/bin/bitcoind bitcoin-${BITCOIN_VERSION}/bin/bitcoin-cli /usr/local/bin/
+          bitcoind -version | head -1
+      - name: Start regtest bitcoind
+        run: |
+          mkdir -p "$RUNNER_TEMP/btc"
+          bitcoind -regtest -daemon -datadir="$RUNNER_TEMP/btc" -server=1 -txindex=1 -fallbackfee=0.0002 \
+            -rpcuser="$BITCOIN_RPC_USER" -rpcpassword="$BITCOIN_RPC_PASSWORD" -rpcport="$BITCOIN_RPC_PORT" -rpcbind=127.0.0.1 -rpcallowip=127.0.0.1
+          for i in $(seq 1 30); do bitcoin-cli -regtest -datadir="$RUNNER_TEMP/btc" -rpcuser="$BITCOIN_RPC_USER" -rpcpassword="$BITCOIN_RPC_PASSWORD" getblockcount && break; sleep 1; done
+      - run: npm ci
+        working-directory: backend
+      - name: Typecheck
+        run: npx tsc --noEmit -p .
+        working-directory: backend
+      - name: Tests
+        run: npm test
+        working-directory: backend
+      - name: Production bundle
+        run: npm run build
+        working-directory: backend
+
+  frontend:
+    name: Frontend (tests + build)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+        working-directory: frontend
+      - run: npm test
+        working-directory: frontend
+      - run: npm run build
+        working-directory: frontend
