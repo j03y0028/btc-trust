@@ -44,11 +44,11 @@ describe('timeline & goals API', () => {
   });
   it('GET /api/progress reads stage commits and test counts from git', async () => {
     const r = await request(app).get('/api/progress');
-    expect(r.body.stages).toHaveLength(8);
+    expect(r.body.stages).toHaveLength(9);
     const s5 = r.body.stages.find((s: { id: number }) => s.id === 5);
     expect(s5.commit.short).toBe('e31f8e9');
     expect(s5.tests).toMatchObject({ backend: 106, frontend: 30 });
     expect(r.body.stages[0].commit.short).toBe('c83917b');
-    expect(r.body.backlog.map((b: { title: string }) => b.title)).toEqual(expect.arrayContaining(['Tor transport', 'myNode packaging']));
+    expect(r.body.backlog.map((b: { title: string }) => b.title)).toEqual(expect.arrayContaining(['Tor transport', 'Install on a physical myNode']));
   });
 });

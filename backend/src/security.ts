@@ -9,11 +9,18 @@ const LOOPBACK = ['localhost', '127.0.0.1', '[::1]', '::1'];
 export const isLoopback = (host: string) => LOOPBACK.includes(host) || /^127\.\d+\.\d+\.\d+$/.test(host);
 const hostname = (h: string) => (h.startsWith('[') ? h.slice(0, h.indexOf(']') + 1) : h.split(':')[0]).toLowerCase();
 
+/** IP-literal Host headers can't be produced by DNS rebinding (the attacker's page always carries its own domain name). */
+export const isIpLiteral = (h: string) => /^\d{1,3}(\.\d{1,3}){3}$/.test(h) || /^\[[0-9a-f:.]+\]$/i.test(h);
 export function allowedHost(cfg: Pick<AppConfig, 'security'>, hostHeader: string | undefined) {
   if (!hostHeader) return false;
   const h = hostname(hostHeader);
-  return isLoopback(h) || cfg.security.allowedHosts.includes(h);
+  // .onion names resolve only inside Tor (myNode publishes a hidden service per app), so they can't be rebound either.
+  return isLoopback(h) || isIpLiteral(h) || h.endsWith('.onion') || cfg.security.allowedHosts.includes(h);
 }
+
+/** CSP for the built single-page app when the API serves it (same value as frontend/csp.ts PROD_CSP, plus frame-ancestors). */
+export const SPA_CSP = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' ws: wss:; media-src 'self' blob: mediastream:; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'";
+const API_CSP = "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'";
 export function allowedOrigin(cfg: Pick<AppConfig, 'security'>, origin: string) {
   try { const u = new URL(origin); return (u.protocol === 'http:' || u.protocol === 'https:') && allowedHost(cfg, u.host); } catch { return false; }
 }
@@ -32,15 +39,19 @@ export function securityMiddleware(cfg: Pick<AppConfig, 'security'>): RequestHan
   const general = limiter(s.rateLimit.general, 'API');
   const sensitive = limiter(s.rateLimit.sensitive, 'sensitive');
   const outbound = limiter(s.rateLimit.outbound, 'outbound');
-  const SENSITIVE = [/^\/api\/vaults\/[^/]+(\/(unlock(\/sign|\/verify)?|passphrase|second-factor|restore))?$/, /^\/api\/messaging\/[^/]+\/identities/, /\/psbt\/sign$/, /^\/api\/wallets\/[^/]+\/registration\/ledger$/];
+  const SENSITIVE = [/^\/api\/auth\/(login|setup|passphrase)$/, /^\/api\/vaults\/[^/]+(\/(unlock(\/sign|\/verify)?|passphrase|second-factor|restore))?$/, /^\/api\/messaging\/[^/]+\/identities/, /\/psbt\/sign$/, /^\/api\/wallets\/[^/]+\/registration\/ledger$/];
   const OUTBOUND = [/^\/api\/mainnet\/snapshot$/, /^\/api\/timeline\/refresh$/];
   return [
     helmet({
-      contentSecurityPolicy: { useDefaults: false, directives: { defaultSrc: ["'none'"], frameAncestors: ["'none'"], baseUri: ["'none'"], formAction: ["'none'"] } },
+      contentSecurityPolicy: false, // set per response below: locked-down for /api, app policy for the served SPA
       crossOriginResourcePolicy: { policy: 'same-origin' },
       referrerPolicy: { policy: 'no-referrer' },
       strictTransportSecurity: false, // plain-http localhost; enable behind TLS (myNode nginx)
     }),
+    (req: Request, res: Response, next: NextFunction) => {
+      res.setHeader('Content-Security-Policy', req.path.startsWith('/api/') || req.path === '/api' ? API_CSP : SPA_CSP);
+      next();
+    },
     (req: Request, res: Response, next: NextFunction) => {
       if (!allowedHost(cfg, req.headers.host)) { res.status(421).json({ error: 'Host not allowed (DNS-rebinding protection). Add it to API_ALLOWED_HOSTS.' }); return; }
       if (!['GET', 'HEAD', 'OPTIONS'].includes(req.method)) {

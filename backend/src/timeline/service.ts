@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import type { AppConfig } from '../config.js';
-import { BitcoinRpc } from '../rpc.js';
+import { ReadOnlyRpc } from '../readonly-rpc.js';
 import { STAGES } from '../stages.js';
 import { NEXT_HALVING, WHITEPAPER, daysBetween, estimateHeightDate, sha256Hex } from './chain.js';
 import { BITCOIN_WHITEPAPER_EVENT, US_EVENTS, type TimelineEvent } from './events.js';
@@ -10,7 +10,7 @@ import { FRED_SERIES, FredCache, type CachedSeries } from './fred.js';
 import { MainnetService, localDate, streak } from './mainnet.js';
 import { BACKLOG, stageProgress } from './progress.js';
 
-export const REPO_ROOT = resolve(import.meta.dirname, '../../..');
+export const REPO_ROOT = process.env.APP_ROOT ?? resolve(import.meta.dirname, '../../..');
 export const WHITEPAPER_FILE = join(REPO_ROOT, 'frontend/public/bitcoin.pdf');
 
 export function verifyWhitepaper(file = WHITEPAPER_FILE) {
@@ -23,11 +23,13 @@ export function verifyWhitepaper(file = WHITEPAPER_FILE) {
 export class TimelineService {
   readonly fred: FredCache;
   readonly mainnet: MainnetService;
-  constructor(private cfg: AppConfig, opts: { fetch?: FetchLike; attempts?: number; repoRoot?: string; whitepaperFile?: string } = {}) {
+  /** The mainnet node (myNode), reachable only through the read-only allowlist client. */
+  readonly node: ReadOnlyRpc | null;
+  constructor(private cfg: AppConfig, opts: { fetch?: FetchLike; attempts?: number; repoRoot?: string; whitepaperFile?: string; node?: ReadOnlyRpc | null } = {}) {
     this.fred = new FredCache(join(cfg.dataDir, 'fred'), opts.fetch, undefined, opts.attempts);
     const n = cfg.mainnet.node;
-    const node = n ? new BitcoinRpc({ rpcHost: n.host, rpcPort: n.port, rpcUser: n.user, rpcPassword: n.password, rpcTimeoutMs: cfg.rpcTimeoutMs }) : null;
-    this.mainnet = new MainnetService({ dataDir: cfg.dataDir, node, fetch: opts.fetch, attempts: opts.attempts });
+    this.node = opts.node !== undefined ? opts.node : n ? new ReadOnlyRpc(n, cfg.rpcTimeoutMs) : null;
+    this.mainnet = new MainnetService({ dataDir: cfg.dataDir, node: this.node, expectChain: n?.expectChain ?? 'main', fetch: opts.fetch, attempts: opts.attempts });
     this.repoRoot = opts.repoRoot ?? REPO_ROOT;
     this.whitepaperFile = opts.whitepaperFile ?? WHITEPAPER_FILE;
   }

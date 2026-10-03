@@ -28,10 +28,21 @@ async function get<T>(path: string): Promise<T> {
   return r.json() as Promise<T>
 }
 
+export type ChainSource = 'wallet' | 'mainnet'
+const src = (s: ChainSource) => (s === 'mainnet' ? 'source=mainnet' : '')
+
+export interface ModeInfo {
+  mode: 'standalone' | 'split'
+  mainnet: { configured: false } | { configured: true; readOnly: true; expectChain: string; auth: 'rpcauth' | 'cookie'; methods: string[]; refused: number }
+  wallet: { enabled: boolean; network: string | null }
+  auth: { required: boolean }
+}
+
 export const api = {
-  blockchain: () => get<ChainSummary>('/api/blockchain'),
-  blocks: (count = 8) => get<BlockSummary[]>(`/api/blocks?count=${count}`),
+  blockchain: (source: ChainSource = 'wallet') => get<ChainSummary>(`/api/blockchain${source === 'mainnet' ? '?' + src(source) : ''}`),
+  blocks: (count = 8, source: ChainSource = 'wallet') => get<BlockSummary[]>(`/api/blocks?count=${count}${source === 'mainnet' ? '&' + src(source) : ''}`),
   stages: () => get<Stage[]>('/api/stages'),
+  mode: () => get<ModeInfo>('/api/mode'),
 }
 
 export const fmt = {

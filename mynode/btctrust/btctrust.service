@@ -1,0 +1,32 @@
+# btctrust service
+# /etc/systemd/system/btctrust.service
+
+[Unit]
+Description=btctrust
+Wants=www.service docker_images.service
+After=www.service docker_images.service
+
+[Service]
+WorkingDirectory=/opt/mynode/btctrust
+
+ExecStartPre=/usr/bin/is_not_shutting_down.sh
+ExecStartPre=/usr/bin/wait_on_bitcoin.sh
+ExecStartPre=/usr/bin/wait_on_docker_image_install.sh
+ExecStartPre=/bin/bash -c 'if [ -f /usr/bin/service_scripts/pre_btctrust.sh ]; then /bin/bash /usr/bin/service_scripts/pre_btctrust.sh; fi'
+# Starts the bundled TEST wallet node container, then runs the app container in the foreground.
+ExecStart=/bin/bash /opt/mynode/btctrust/app_data/run.sh start
+ExecStartPost=/bin/bash -c 'if [ -f /usr/bin/service_scripts/post_btctrust.sh ]; then /bin/bash /usr/bin/service_scripts/post_btctrust.sh; fi'
+ExecStop=/bin/bash /opt/mynode/btctrust/app_data/run.sh stop
+
+User=btctrust
+Group=btctrust
+Type=simple
+TimeoutSec=120
+Restart=always
+RestartSec=60
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=btctrust
+
+[Install]
+WantedBy=multi-user.target

@@ -12,7 +12,7 @@ interface Client { ws: WebSocket; walletId: string; fingerprint: string }
  * ciphertext envelopes, receipts and signature-request updates for that trustee, and
  * immediately flushes anything queued while the trustee was offline.
  */
-export function attachRealtime(server: Server, msg: MessagingService, cfg?: Pick<AppConfig, 'security'>) {
+export function attachRealtime(server: Server, msg: MessagingService, cfg?: Pick<AppConfig, 'security'>, auth?: { allows(req: import('node:http').IncomingMessage): boolean }, enabled = true) {
   const wss = new WebSocketServer({ noServer: true, maxPayload: 64 * 1024 });
   const clients = new Set<Client>();
 
@@ -23,6 +23,9 @@ export function attachRealtime(server: Server, msg: MessagingService, cfg?: Pick
     if (!allowedHost(sec, req.headers.host) || (req.headers.origin && !allowedOrigin(sec, req.headers.origin))) {
       socket.write('HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n'); socket.destroy(); return;
     }
+    // App login: the session cookie rides along on the upgrade request (same origin).
+    if (auth && !auth.allows(req)) { socket.write('HTTP/1.1 401 Unauthorized\r\nConnection: close\r\n\r\n'); socket.destroy(); return; }
+    if (!enabled) { socket.write('HTTP/1.1 503 Service Unavailable\r\nConnection: close\r\n\r\n'); socket.destroy(); return; }
     wss.handleUpgrade(req, socket, head, (ws) => wss.emit('connection', ws));
   });
 

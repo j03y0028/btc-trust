@@ -21,6 +21,10 @@ import { timelineRouter } from './timeline/routes.js';
 import { RegistrationService } from './registration/service.js';
 import { registrationRouter } from './registration/routes.js';
 import { securityMiddleware } from './security.js';
+import { AuthService, authRouter, requireLogin } from './auth.js';
+import { READ_ONLY_METHODS, TestChainRpc } from './readonly-rpc.js';
+import { existsSync } from 'node:fs';
+import { join, resolve } from 'node:path';
 
 export function hwiFromConfig(cfg: AppConfig, rpc: BitcoinRpc): HwiAdapter | null {
   const { mode, bin, emulators, timeoutMs } = cfg.hwi;
@@ -33,8 +37,15 @@ export function hwiFromConfig(cfg: AppConfig, rpc: BitcoinRpc): HwiAdapter | nul
 /** Extended private keys must never leave the node. */
 const XPRV_RE = /\b[tx]prv[1-9A-HJ-NP-Za-km-z]{100,}/;
 
-export function createApp(cfg: AppConfig, rpc = new BitcoinRpc(cfg), store = new WalletStore(cfg.dataDir, cfg.network), hwi: HwiAdapter | null = hwiFromConfig(cfg, rpc), timeline = new TimelineService(cfg)) {
+/** Wallet-side client: in split mode it refuses to talk to a node that reports mainnet. */
+export const walletRpcFor = (cfg: AppConfig): BitcoinRpc => (cfg.mode === 'split' ? new TestChainRpc(cfg) : new BitcoinRpc(cfg));
+
+/** Route prefixes that belong to the wallet side (test chain); switched off entirely with WALLET_FEATURES=off. */
+const WALLET_PREFIXES = ['/api/wallets', '/api/devices', '/api/vaults', '/api/messaging', '/api/regtest'];
+
+export function createApp(cfg: AppConfig, rpc: BitcoinRpc = walletRpcFor(cfg), store = new WalletStore(cfg.dataDir, cfg.network), hwi: HwiAdapter | null = hwiFromConfig(cfg, rpc), timeline = new TimelineService(cfg), auth = new AuthService(cfg)) {
   const svc = new ChainService(rpc);
+  const mainnetSvc = timeline.node ? new ChainService(timeline.node) : null;
   const devices = new DeviceService(hwi, cfg.network);
   const wallets = new WalletService(rpc, store, cfg.network, devices);
   const faucet = new Faucet(rpc, cfg.network);
@@ -44,6 +55,7 @@ export function createApp(cfg: AppConfig, rpc = new BitcoinRpc(cfg), store = new
   const app = express();
   app.locals.messaging = messaging;
   app.locals.timeline = timeline;
+  app.locals.auth = auth;
   app.disable('x-powered-by');
   app.set('trust proxy', false);
   app.use(...securityMiddleware(cfg));
@@ -52,6 +64,18 @@ export function createApp(cfg: AppConfig, rpc = new BitcoinRpc(cfg), store = new
   app.use((req, res, next) => (/^\/api\/vaults\/[^/]+\/restore$/.test(req.path) ? next() : express.json({ limit: '2mb' })(req, res, next)));
   app.use(express.raw({ type: 'application/octet-stream', limit: '2mb' }));
   app.use(express.text({ type: 'text/plain', limit: '2mb' }));
+
+  // ---- App login (required beyond localhost) ----
+  app.get('/api/healthz', (_req, res) => { res.json({ ok: true }); }); // liveness only, no data (Docker HEALTHCHECK)
+  app.use('/api/auth', authRouter(auth, cfg));
+  app.use(requireLogin(auth));
+
+  if (!cfg.walletFeatures) {
+    app.use((req, res, next) => {
+      if (!WALLET_PREFIXES.some((p) => req.path === p || req.path.startsWith(p + '/'))) return next();
+      res.status(503).json({ error: 'Wallet, vault and messaging features are switched off on this deployment (WALLET_FEATURES=off).', disabled: true });
+    });
+  }
 
   // Response guard: refuse to send anything that looks like an extended private key.
   app.use((_req, res, next) => {
@@ -67,16 +91,39 @@ export function createApp(cfg: AppConfig, rpc = new BitcoinRpc(cfg), store = new
   });
 
   app.get('/api/health', async (_req, res) => {
+    const mainnet = timeline.node
+      ? await timeline.node.chain().then((chain) => ({ rpc: 'connected', chain, readOnly: true })).catch((e) => ({ rpc: 'unreachable', error: (e as Error).message, readOnly: true }))
+      : undefined;
+    if (!cfg.walletFeatures) { res.status(mainnet?.rpc === 'connected' ? 200 : 503).json({ ok: mainnet?.rpc === 'connected', mode: cfg.mode, mainnet, wallet: { enabled: false } }); return; }
     try {
       await rpc.call('getblockcount');
-      res.json({ ok: true, rpc: 'connected', network: cfg.network });
+      res.json({ ok: true, rpc: 'connected', network: cfg.network, mode: cfg.mode, ...(mainnet ? { mainnet } : {}) });
     } catch (e) {
-      res.status(503).json({ ok: false, rpc: 'unreachable', error: (e as Error).message });
+      res.status(503).json({ ok: false, rpc: 'unreachable', error: (e as Error).message, mode: cfg.mode, ...(mainnet ? { mainnet } : {}) });
     }
   });
 
-  app.get('/api/blockchain', async (_req, res) => {
-    res.json(await svc.summary());
+  /** How this deployment is split: which chain feeds the dashboard/timeline and where wallets live. */
+  app.get('/api/mode', (_req, res) => {
+    res.json({
+      mode: cfg.mode,
+      mainnet: cfg.mainnet.node ? { configured: true, readOnly: true, expectChain: cfg.mainnet.node.expectChain, auth: cfg.mainnet.node.cookieFile ? 'cookie' : 'rpcauth', methods: READ_ONLY_METHODS, refused: timeline.node?.refused.length ?? 0 } : { configured: false },
+      wallet: { enabled: cfg.walletFeatures, network: cfg.walletFeatures ? cfg.network : null },
+      auth: { required: auth.required },
+    });
+  });
+
+  // ?source=mainnet → the read-only mainnet node (myNode); default → the wallet node.
+  const chainFor = (req: Request) => {
+    if (req.query.source === 'mainnet') {
+      if (!mainnetSvc) throw new HttpError(404, 'No mainnet node configured (MAINNET_RPC_HOST)');
+      return mainnetSvc;
+    }
+    if (!cfg.walletFeatures) throw new HttpError(503, 'Wallet node disabled (WALLET_FEATURES=off); use ?source=mainnet');
+    return svc;
+  };
+  app.get('/api/blockchain', async (req, res) => {
+    res.json(await chainFor(req).summary());
   });
 
   app.get('/api/blocks', async (req, res) => {
@@ -85,7 +132,7 @@ export function createApp(cfg: AppConfig, rpc = new BitcoinRpc(cfg), store = new
       res.status(400).json({ error: 'count must be a positive number' });
       return;
     }
-    res.json(await svc.recentBlocks(count));
+    res.json(await chainFor(req).recentBlocks(count));
   });
 
   app.get('/api/stages', (_req, res) => {
@@ -172,6 +219,15 @@ export function createApp(cfg: AppConfig, rpc = new BitcoinRpc(cfg), store = new
     if (!address) throw new HttpError(400, 'address or walletId is required');
     res.json({ address, ...(await faucet.fund(address, Number(req.body?.amount ?? 1), req.body?.confirm !== false)) });
   });
+
+  // ---- Built frontend on the same port (Docker / myNode) ----
+  if (cfg.staticDir) {
+    const dir = resolve(cfg.staticDir);
+    const index = join(dir, 'index.html');
+    app.use(express.static(dir, { index: false, maxAge: '1h', setHeaders: (res, path) => { if (path.endsWith('.html')) res.setHeader('cache-control', 'no-store'); } }));
+    app.get(/^(?!\/api(\/|$)).*/, (_req, res, next) => (existsSync(index) ? res.setHeader('cache-control', 'no-store').sendFile(index) : next()));
+  }
+  app.use('/api', (_req, res) => { res.status(404).json({ error: 'Not found' }); });
 
   app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
     const e = err as Error & { details?: unknown };

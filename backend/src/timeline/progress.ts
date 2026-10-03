@@ -17,14 +17,15 @@ const STAGES: { id: number; title: string; achievements: string[] }[] = [
   { id: 5, title: 'Trustee Messaging', achievements: ['End-to-end encryption (X25519 / XSalsa20-Poly1305 / Ed25519)', 'signmessage attestations and PSBT signature requests', 'WebSocket delivery, offline queue, urgent escalation'] },
   { id: 6, title: 'Timeline & Goals', achievements: ['FRED macro series (CPI, M2, fed funds, GDP, unemployment) cached with source + fetch date', 'Cited U.S. economy events alongside Bitcoin milestones', 'White paper bundled after SHA-256 verification; genesis headline decoded from mainnet data', 'Read-only daily mainnet snapshots cross-checked across mempool.space and blockstream.info'] },
   { id: 7, title: 'Hardening', achievements: ['Trustee keys encrypted in the browser (scrypt + AES-256-GCM) with idle auto-lock and v1 migration', 'Browser re-verifies every BIP-137 key attestation instead of trusting the server', 'Coldcard multisig setup file + Ledger BIP-388 policy (mock device); Trezor needs no registration', 'Animated BC-UR crypto-psbt QR export and camera/paste import', 'Security review: Host/Origin guards, rate limits, helmet + CSP, owner-only data files, npm audit clean'] },
+  { id: 8, title: 'myNode Packaging', achievements: ['Split mode: dashboard, daily snapshots and timeline read mainnet from your node; wallets, vaults, messaging and PSBTs stay on a bundled regtest/signet node', 'Read-only RPC allowlist (15 methods) enforced in code and by bitcoind rpcwhitelist for a dedicated rpcauth user', 'App login: scrypt-hashed passphrase, one-time setup token, HttpOnly session cookie, lockout', 'Multi-stage Docker image (amd64 + arm64), non-root, healthcheck; myNode app definition + install/uninstall scripts', 'Simulated myNode run with myNode\'s own bitcoin.conf generator: 50 end-to-end checks'] },
 ];
 
 export const BACKLOG = [
   { title: 'Tor transport', detail: 'Route trustee messaging and node RPC over Tor onion services.' },
-  { title: 'myNode packaging', detail: 'Ship as a myNode app that reads from the local node (getblockchaininfo) instead of public APIs.' },
   { title: 'Independent security audit', detail: 'External review of the crypto, key handling and PSBT flows before any mainnet use (see docs/security-review.md).' },
   { title: 'Real-device Ledger & Coldcard validation', detail: 'Register the BIP-388 policy on a physical Ledger (ledger_bitcoin) and import the setup file on a Coldcard; Stage 7 verified them against a mock and bitcoind only.' },
-  { title: 'API authentication', detail: 'Per-trustee login for the API before it is exposed beyond localhost (today it relies on loopback binding + Host/Origin checks).' },
+  { title: 'Install on a physical myNode', detail: 'Stage 8 was verified on a simulated myNode (myNode\'s real config generator + a regtest stand-in node); run install-mynode.sh on real hardware and confirm the app page, nginx 9331 and Tor.' },
+  { title: 'Per-trustee accounts', detail: 'Today one app passphrase guards the whole app; give each trustee their own login and permissions.' },
 ];
 
 function countTree(root: string, dir: string, exts = /\.test\.tsx?$/): number {

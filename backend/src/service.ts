@@ -1,4 +1,4 @@
-import type { BitcoinRpc } from './rpc.js';
+import type { RpcLike } from './readonly-rpc.js';
 
 export interface ChainSummary {
   network: string;
@@ -42,7 +42,7 @@ export function syncPercent(info: Pick<BlockchainInfo, 'verificationprogress' | 
 }
 
 export class ChainService {
-  constructor(private rpc: BitcoinRpc) {}
+  constructor(private rpc: RpcLike) {}
 
   async summary(): Promise<ChainSummary> {
     const [bc, mp, net] = await Promise.all([

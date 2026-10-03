@@ -1,6 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
-import type { BitcoinRpc } from '../rpc.js';
+import type { RpcLike } from '../readonly-rpc.js';
 import { GENESIS_HASH, HALVING_HEIGHTS, parseHeader, verifyGenesis } from './chain.js';
 import { fetchText, type FetchLike } from './fetcher.js';
 
@@ -79,7 +79,7 @@ export const localDate = (d = new Date(), timeZone = process.env.SNAPSHOT_TZ || 
 export class MainnetService {
   readonly sources: Esplora[];
   readonly fallbacks: Esplora[];
-  constructor(private opts: { dataDir: string; node?: BitcoinRpc | null; fetch?: FetchLike; attempts?: number; sources?: Esplora[]; fallbacks?: Esplora[] }) {
+  constructor(private opts: { dataDir: string; node?: RpcLike | null; expectChain?: string; fetch?: FetchLike; attempts?: number; sources?: Esplora[]; fallbacks?: Esplora[] }) {
     this.sources = opts.sources ?? ESPLORA_SOURCES.map((s) => new Esplora(s.name, s.base, opts.fetch, opts.attempts));
     this.fallbacks = opts.fallbacks ?? FALLBACK_SOURCES.map((s) => new Esplora(s.name, s.base, opts.fetch, opts.attempts));
   }
@@ -101,7 +101,8 @@ export class MainnetService {
     const t0 = Date.now();
     try {
       const info = await this.opts.node.call<{ chain: string; blocks: number; bestblockhash: string; difficulty: number }>('getblockchaininfo');
-      if (info.chain !== 'main') return { name: 'node', ok: false, error: `configured node is on ${info.chain}, not mainnet` };
+      const want = this.opts.expectChain ?? 'main';
+      if (info.chain !== want) return { name: 'node', ok: false, error: `configured node is on ${info.chain}, not ${want === 'main' ? 'mainnet' : want}` };
       const hdr = parseHeader(await this.opts.node.call<string>('getblockheader', [info.bestblockhash, false]));
       return { name: 'node', ok: true, height: info.blocks, hash: info.bestblockhash, time: hdr.time, difficulty: info.difficulty, powValid: hdr.powValid, latencyMs: Date.now() - t0 };
     } catch (e) {

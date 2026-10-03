@@ -11,4 +11,5 @@ export const STAGES: Stage[] = [
   { id: 5, title: 'Trustee Messaging', description: 'Private internal channel between trustees', status: 'complete' },
   { id: 6, title: 'Timeline & Goals', description: 'US economy milestones vs. the Bitcoin white paper, daily block data, progress tracker', status: 'complete' },
   { id: 7, title: 'Hardening', description: 'Encrypted trustee keys, browser-side attestation checks, Coldcard/Ledger registration, animated UR QR, security review', status: 'complete' },
+  { id: 8, title: 'myNode Packaging', description: 'Docker app for myNode: read-only mainnet via an allowlisted RPC user, test-only wallets on a bundled regtest node, app login', status: 'in-progress' },
 ];

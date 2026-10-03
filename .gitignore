@@ -4,3 +4,7 @@ dist/
 *.log
 .run/
 data/
+build/
+mynode/btctrust/app_data/*.tar.gz
+mynode/btctrust/app_data/*.tar.gz.sha256
+data-docker/

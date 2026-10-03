@@ -1,0 +1,53 @@
+# BTC Trust - split mode: READ-ONLY mainnet from your node + TEST-ONLY wallets on a bundled regtest/signet node.
+# Generic Docker host / myNode-by-hand alternative to install-mynode.sh (which uses myNode's app system + systemd).
+#   cp btctrust.env.example btctrust.env   # fill in MAINNET_RPC_PASSWORD + TESTNODE_RPC_PASSWORD
+#   docker compose --env-file btctrust.env up -d     (data dir must be writable by uid 10001)
+# The mainnet RPC user must be restricted by bitcoind itself (rpcwhitelist) - see docs/mynode-install.md.
+name: btctrust
+
+services:
+  testnode:
+    image: ${BTCTRUST_IMAGE:-btctrust:0.8.0}
+    command: btctrust-testnode
+    user: "${BTCTRUST_UID:-10001}:${BTCTRUST_GID:-10001}"
+    environment:
+      TESTNODE_CHAIN: ${WALLET_CHAIN:-regtest}
+      TESTNODE_RPC_USER: btctrust
+      TESTNODE_RPC_PASSWORD: ${TESTNODE_RPC_PASSWORD:?set TESTNODE_RPC_PASSWORD in btctrust.env}
+    volumes:
+      - ${BTCTRUST_DATA:-./data-docker}/testnode:/bitcoin
+    networks: [internal]          # no internet, no host access, no published ports
+    restart: unless-stopped
+
+  app:
+    image: ${BTCTRUST_IMAGE:-btctrust:0.8.0}
+    build: .
+    user: "${BTCTRUST_UID:-10001}:${BTCTRUST_GID:-10001}"
+    depends_on: [testnode]
+    ports:
+      - "${BTCTRUST_BIND:-0.0.0.0}:${BTCTRUST_PORT:-9330}:9330"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      APP_MODE: split
+      AUTH_MODE: "on"
+      MAINNET_RPC_HOST: ${MAINNET_RPC_HOST:-host.docker.internal}
+      MAINNET_RPC_PORT: ${MAINNET_RPC_PORT:-8332}
+      MAINNET_RPC_USER: ${MAINNET_RPC_USER:-btctrust}
+      MAINNET_RPC_PASSWORD: ${MAINNET_RPC_PASSWORD:?set MAINNET_RPC_PASSWORD in btctrust.env}
+      MAINNET_RPC_EXPECT_CHAIN: ${MAINNET_RPC_EXPECT_CHAIN:-main}
+      WALLET_FEATURES: ${WALLET_FEATURES:-on}
+      BITCOIN_NETWORK: ${WALLET_CHAIN:-regtest}
+      BITCOIN_RPC_HOST: testnode
+      BITCOIN_RPC_USER: btctrust
+      BITCOIN_RPC_PASSWORD: ${TESTNODE_RPC_PASSWORD}
+      API_ALLOWED_HOSTS: ${API_ALLOWED_HOSTS:-mynode.local,mynode}
+      SNAPSHOT_TZ: ${SNAPSHOT_TZ:-UTC}
+    volumes:
+      - ${BTCTRUST_DATA:-./data-docker}/app:/data
+    networks: [default, internal]
+    restart: unless-stopped
+
+networks:
+  internal:
+    internal: true

@@ -1,13 +1,15 @@
 {
   "name": "btc-trust-backend",
-  "version": "0.1.0",
+  "version": "0.8.0",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "start": "tsx src/index.ts",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "build": "esbuild src/index.ts src/cli/daily-snapshot.ts --bundle --platform=node --target=node22 --format=esm --packages=external --outdir=dist --out-extension:.js=.mjs --sourcemap --log-level=warning",
+    "start:prod": "node dist/index.mjs"
   },
   "dependencies": {
     "@noble/hashes": "^2.4.0",
@@ -26,6 +28,7 @@
     "@types/node": "^26.6.4",
     "@types/supertest": "^7.2.1",
     "@types/ws": "^8.18.2",
+    "esbuild": "^0.28.2",
     "supertest": "^7.3.1",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2",

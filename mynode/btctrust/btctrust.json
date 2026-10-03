@@ -1,0 +1,61 @@
+{
+    "name": "BTC Trust",
+    "short_name": "btctrust",
+    "author": {"name": "Joey Lara", "link": ""},
+    "website": {"name": "Local build (not published)", "link": ""},
+    "category": "bitcoin_app",
+    "short_description": "Family trust (beta)",
+    "description": [
+        "Family Bitcoin trust workspace: a read-only view of your node's mainnet chain (dashboard, daily block log, economy timeline) plus multisig wallets, an encrypted trust vault and end-to-end encrypted trustee messaging.",
+        "SPLIT MODE: your node is only ever asked read-only questions (an allowlist of 15 RPC methods such as getblockchaininfo and getblock), enforced in the app and again by bitcoind's rpcwhitelist for a dedicated 'btctrust' RPC user.",
+        "WALLETS ARE TEST-ONLY: wallets, PSBTs, the vault and messaging run on a separate bundled REGTEST (or signet) node with worthless test coins. Never send real bitcoin to addresses shown in this app."
+    ],
+    "latest_version": "v0.8.0",
+    "linux_user": "btctrust",
+    "supported_archs": ["aarch64", "x86_64"],
+    "download_skip": true,
+    "download_type": "source",
+    "download_source_url": null,
+    "install_env_vars": {},
+    "supports_app_page": true,
+    "supports_testnet": false,
+    "http_port": "9330",
+    "https_port": "9331",
+    "requires_bitcoin": true,
+    "requires_docker_image_installation": true,
+    "requires_electrs": false,
+    "requires_lightning": false,
+    "show_on_application_page": true,
+    "show_on_homepage": true,
+    "show_on_status_page": true,
+    "hide_status_icon": false,
+    "journalctl_log_name": "btctrust",
+    "app_tile_name": "BTC Trust",
+    "app_tile_running_status_text": "Running",
+    "app_tile_button_text": "Info",
+    "app_tile_button_href": "/app/btctrust/info",
+    "app_page_show_open_button": true,
+    "app_page_content": [
+        {"heading": "First run",
+         "content": [
+            "Click Open, then enter the setup token shown below under App Default Credentials and choose an app passphrase (12+ characters). After that the token is retired and the passphrase is all you need.",
+            "The app passphrase protects the whole app. Trust-vault documents and trustee messaging keys have their own separate passphrases."
+         ]},
+        {"heading": "What touches your node",
+         "content": [
+            "Only read-only RPC calls, through the dedicated 'btctrust' RPC user that the installer added with rpcwhitelist (see docs/mynode-install.md). Wallet, send, sign, import and mining calls are refused by the app and by bitcoind.",
+            "Wallet features use a separate bundled regtest node. They are for learning and testing only: test coins have no value."
+         ]}
+    ],
+    "login_username": "setup token (first run only)",
+    "can_uninstall": true,
+    "can_reinstall": true,
+    "can_enable_disable": true,
+    "data_manageable": false,
+    "is_beta": true,
+    "is_premium": false,
+    "homepage_section": "apps",
+    "homepage_order": 91,
+    "app_type": "custom",
+    "sdk_version": 2
+}

@@ -770,3 +770,29 @@ select { font: inherit; color: var(--text); background: rgba(0,0,0,.35); border:
 .ur-video.off { display: grid; place-items: center; height: 90px; color: var(--muted); font-size: .78rem; background: rgba(0,0,0,.3); }
 .ur-progress { height: 5px; border-radius: 3px; background: rgba(255,255,255,.08); overflow: hidden; }
 .ur-progress i { display: block; height: 100%; background: linear-gradient(90deg, #ffb347, var(--orange)); transition: width .2s; }
+
+/* ---------- Stage 8: app login + myNode split mode ---------- */
+.login-wrap { min-height: 100vh; display: grid; place-items: center; padding: 40px 16px; position: relative; }
+.login { width: min(460px, 100%); display: flex; flex-direction: column; gap: 8px; position: relative; overflow: hidden; z-index: 1; }
+.login::before { content: ''; position: absolute; width: 280px; height: 280px; right: -120px; top: -130px; border-radius: 50%; background: var(--orange, #f7931a); filter: blur(80px); opacity: .22; pointer-events: none; }
+.login-brand { display: flex; gap: 12px; align-items: center; margin-bottom: 10px; }
+.login-brand h1 { margin: 0; font-size: 1.3rem; }
+.login-brand p { margin: 0; font-size: .8rem; }
+.login h2 { margin: 4px 0 0; font-size: 1.35rem; letter-spacing: -.01em; }
+.login .small { font-size: .82rem; line-height: 1.5; margin: 0 0 6px; }
+.login code { font-size: .74rem; }
+.login input { font: inherit; color: var(--text); background: rgba(0,0,0,.28); border: 1px solid var(--border); border-radius: 12px; padding: 11px 14px; outline: none; transition: border-color .2s, box-shadow .2s; }
+.login input:focus { border-color: rgba(247,147,26,.6); box-shadow: 0 0 0 3px rgba(247,147,26,.15); }
+.login .btn.primary { margin-top: 8px; justify-content: center; }
+.net-main { background: rgba(247,147,26,.14); color: #ffb35c; border-color: rgba(247,147,26,.35); }
+.ro-pill { font-size: .66rem; letter-spacing: .08em; text-transform: uppercase; font-weight: 700; padding: 4px 8px; border-radius: 999px; color: #7ee2a8; background: rgba(46,204,113,.1); border: 1px solid rgba(46,204,113,.3); }
+.split-banner { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; padding: 12px 18px; margin-bottom: 18px; font-size: .84rem; }
+.split-banner b { color: var(--text); }
+.split-banner .sb-item { display: flex; gap: 8px; align-items: center; }
+.split-banner .sb-test { color: #ffcf7a; }
+.btn.logout { font-size: .75rem; padding: 6px 12px; }
+.wallet-chain { display: flex; flex-direction: column; gap: 6px; }
+.wallet-chain .wc-row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.wallet-chain .wc-h { font-family: 'JetBrains Mono', monospace; font-size: 1.6rem; font-weight: 600; }
+.ro-methods { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+.ro-methods code { font-size: .64rem; padding: 2px 6px; border-radius: 6px; background: rgba(255,255,255,.04); border: 1px solid var(--border); color: var(--muted); }
