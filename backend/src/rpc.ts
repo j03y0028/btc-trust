@@ -12,7 +12,7 @@ export class BitcoinRpc {
   private id = 0;
   constructor(private cfg: Pick<AppConfig, 'rpcHost' | 'rpcPort' | 'rpcUser' | 'rpcPassword' | 'rpcTimeoutMs'>) {}
 
-  async call<T = unknown>(method: string, params: unknown[] = [], wallet?: string): Promise<T> {
+  async call<T = unknown>(method: string, params: unknown[] | Record<string, unknown> = [], wallet?: string): Promise<T> {
     const path = wallet ? `/wallet/${encodeURIComponent(wallet)}` : '/';
     const url = `http://${this.cfg.rpcHost}:${this.cfg.rpcPort}${path}`;
     const auth = Buffer.from(`${this.cfg.rpcUser}:${this.cfg.rpcPassword}`).toString('base64');

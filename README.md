@@ -18,9 +18,13 @@ backend/src/rpc.ts        JSON-RPC client
 backend/src/service.ts    chain summary + recent blocks
 backend/src/stages.ts     roadmap / stage status
 backend/src/app.ts        Express routes
+backend/src/wallets.ts    wallet service (multisig / single-sig / watch-only, PSBT flow)
+backend/src/store.ts      per-wallet config store
+backend/src/faucet.ts     regtest faucet
 backend/test/             unit + regtest integration tests
 frontend/src/App.tsx      dashboard
-frontend/src/components/  StatCard, SyncRing, RecentBlocks, StageTracker
+frontend/src/pages/       Dashboard, Wallets, WalletDetail
+frontend/src/components/  StatCard, SyncRing, RecentBlocks, StageTracker, CreateWalletWizard, SendFlow, SigRing, QrCode, Modal
 scripts/                  regtest-node.sh, dev.sh, screenshot.mjs
 screenshots/stage1.png
 ```
@@ -32,6 +36,25 @@ screenshots/stage1.png
 | `GET /api/blockchain` | network, height, headers, best hash, difficulty, sync %, IBD, size on disk, mempool, node version and peers |
 | `GET /api/blocks?count=N` | the newest N blocks (up to 50), newest first |
 | `GET /api/stages` | roadmap stages and their status |
+| `GET /api/wallets` | list wallets with their config and balance |
+| `POST /api/wallets` | create a wallet: `{name, type: multisig\|singlesig\|watchonly, m?, n?, cosignerLabels?, externalKeys?, descriptor?, xpub?}` |
+| `GET /api/wallets/:id` | details: balance, public descriptors, cosigners, addresses, UTXOs, history |
+| `POST /api/wallets/:id/address` | new receive address |
+| `POST /api/wallets/:id/psbt` | build a funded PSBT `{outputs:[{address, amount}], feeRate?}` |
+| `POST /api/wallets/:id/psbt/{decode,sign,combine,finalize,broadcast}` | PSBT lifecycle (`sign` takes `{psbt, cosigner}`) |
+| `POST /api/regtest/{mine,fund}` | **regtest only**: mine blocks, or send coins from the faucet wallet |
+
+### Wallet model (Stage 2)
+- **Multisig (default 2-of-3, or any m-of-n with 1 ≤ m ≤ n ≤ 15):** each cosigner key is generated in its own bitcoind descriptor wallet
+  (`btctrust-<id>-keyN`). A watch-only wallet (`btctrust-<id>`) imports the `wsh(sortedmulti(m, …/0/*))` receive descriptor and the `/1/*` change descriptor.
+  To spend: `walletcreatefundedpsbt` on the watch-only wallet, then `walletprocesspsbt` on each cosigner wallet, then combine, finalize and `sendrawtransaction`.
+  `externalKeys` lets a hardware-wallet xpub act as one of the cosigners (Stage 3).
+- **Single-sig:** one bitcoind wallet using wpkh, with the same PSBT flow at 1/1.
+- **Watch-only:** imported from a descriptor (m-of-n is detected) or from an xpub (becomes wpkh). It can build PSBTs but has no local signer.
+- Per-wallet config (public data only) is stored in `data/wallets.<network>.json`.
+- **Key safety:** private keys never leave bitcoind. Incoming requests that contain `tprv`/`xprv`/WIF keys are rejected, and a response
+  guard blocks any API reply that contains an extended private key.
+- **Regtest faucet:** `btctrust-faucet` is funded by mining. Regtest halves the block reward every 150 blocks, so on a long chain run `npm run node:reset`.
 
 ## Run
 ```bash
@@ -41,11 +64,14 @@ npm run node:start                # regtest bitcoind (datadir /workspace/bitcoin
 npm test                          # backend typecheck + tests, frontend tests + build
 npm run dev                       # API :4000, UI http://127.0.0.1:5173 (logs in .run/)
 npm run screenshot                # writes screenshots/stage1.png (needs Playwright chromium)
+npm run seed                      # demo regtest wallets (vault 2-of-3, spending, 3-of-5, auditor watch-only)
+npm run screenshot:stage2         # stage2-wallets/-wizard/-wallet-detail/-send.png
+npm run node:reset                # wipe the regtest chain + wallets
 bash scripts/regtest-node.sh cli -generate 1   # mine a block and watch the dashboard update
 ```
 
 ## Roadmap
-0. Foundation ✅ · 1. Node dashboard ✅ · 2. Multisig wallet (2-of-3 P2WSH descriptors) · 3. Hardware wallets (PSBT/HWI) ·
+0. Foundation ✅ · 1. Node dashboard ✅ · 2. Multisig wallet (2-of-3 P2WSH descriptors) ✅ · 3. Hardware wallets (PSBT/HWI) ·
 4. Encrypted trust vault · 5. Trustee messaging · 6. Timeline (US economy milestones + [white paper](https://bitcoin.org/bitcoin.pdf)) and goals tracker
 
 ## myNode deployment notes

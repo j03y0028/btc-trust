@@ -8,7 +8,10 @@
     "node:stop": "bash scripts/regtest-node.sh stop",
     "dev": "bash scripts/dev.sh",
     "test": "npm --prefix backend run typecheck && npm --prefix backend test && npm --prefix frontend test && npm --prefix frontend run build",
-    "screenshot": "node scripts/screenshot.mjs"
+    "screenshot": "node scripts/screenshot.mjs",
+    "node:reset": "bash scripts/regtest-node.sh reset",
+    "seed": "node scripts/seed-demo.mjs",
+    "screenshot:stage2": "node scripts/screenshot-stage2.mjs"
   },
   "devDependencies": {
     "playwright": "^1.63.0"

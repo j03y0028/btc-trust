@@ -65,8 +65,8 @@ describe('regtest integration', () => {
   });
 
   it('mempool size reflects a pending transaction', async () => {
-    // Make sure the test wallet has mature coins (coinbase needs 100 confs).
-    await rpc.call('generatetoaddress', [101, minerAddress]);
+    // Fund the test wallet from the regtest faucet (avoids mining 100+ blocks per run).
+    await request(app).post('/api/regtest/fund').send({ address: minerAddress, amount: 1 });
     const dest = await rpc.call<string>('getnewaddress', [], WALLET);
     await rpc.call('sendtoaddress', [dest, 0.1], WALLET);
     const r = await request(app).get('/api/blockchain');

@@ -24,6 +24,7 @@ export interface AppConfig {
   rpcTimeoutMs: number;
   apiPort: number;
   allowMainnet: boolean;
+  dataDir: string;
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
@@ -42,5 +43,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     rpcTimeoutMs: Number(env.BITCOIN_RPC_TIMEOUT_MS ?? 10000),
     apiPort: Number(env.API_PORT ?? 4000),
     allowMainnet,
+    dataDir: env.DATA_DIR ?? resolve(import.meta.dirname, '../../data'),
   };
 }

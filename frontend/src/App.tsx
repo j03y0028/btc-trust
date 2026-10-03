@@ -1,13 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { api, fmt, type BlockSummary, type ChainSummary, type Stage } from './lib/api'
-import { StatCard } from './components/StatCard'
-import { SyncRing } from './components/SyncRing'
-import { RecentBlocks } from './components/RecentBlocks'
-import { DEFAULT_STAGES, StageTracker } from './components/StageTracker'
+import { api, type BlockSummary, type ChainSummary, type Stage } from './lib/api'
+import { navigate, useRoute } from './lib/router'
+import { DEFAULT_STAGES } from './components/StageTracker'
+import { Dashboard } from './pages/Dashboard'
+import { Wallets } from './pages/Wallets'
+import { WalletDetail } from './pages/WalletDetail'
 
 const POLL_MS = 5000
 
 export default function App() {
+  const path = useRoute()
   const [chain, setChain] = useState<ChainSummary | null>(null)
   const [blocks, setBlocks] = useState<BlockSummary[]>([])
   const [stages, setStages] = useState<Stage[]>(DEFAULT_STAGES)
@@ -33,6 +35,9 @@ export default function App() {
     return () => clearInterval(t)
   }, [refresh])
 
+  const walletId = path.match(/^\/wallets\/([^/]+)/)?.[1]
+  const section = path.startsWith('/wallets') ? 'wallets' : 'dashboard'
+
   return (
     <div className="app">
       <div className="bg-orbs" aria-hidden><span /><span /><span /></div>
@@ -41,11 +46,17 @@ export default function App() {
           <div className="logo">₿</div>
           <div>
             <h1>BTC Trust</h1>
-            <p className="muted">Sovereign family trust · node dashboard</p>
+            <p className="muted">Sovereign family trust</p>
           </div>
         </div>
+        <nav className="nav" aria-label="Main">
+          <span className={`nav-indicator at-${section}`} aria-hidden />
+          <button className={section === 'dashboard' ? 'active' : ''} onClick={() => navigate('/')}>Dashboard</button>
+          <button className={section === 'wallets' ? 'active' : ''} onClick={() => navigate('/wallets')}>Wallets</button>
+        </nav>
         <div className="status">
           {chain && <span className={`net net-${chain.network}`}>{chain.network}</span>}
+          {chain && <span className="height-chip">#{chain.height.toLocaleString('en-US')}</span>}
           <span className={`live ${error ? 'down' : chain ? 'up' : ''}`}>
             <i />{error ? 'Node offline' : chain ? 'Connected' : 'Connecting…'}
           </span>
@@ -54,39 +65,12 @@ export default function App() {
 
       {error && <div className="glass alert" role="alert">⚠ {error}</div>}
 
-      <main className="grid">
-        <section className="glass card hero">
-          <div className="hero-left">
-            <span className="eyebrow">Block height</span>
-            <div className="hero-height" data-testid="height">{chain ? fmt.int(chain.height) : '—'}</div>
-            <div className="hero-hash">
-              <span className="muted">Best block</span>
-              <code title={chain?.bestBlockHash}>{chain ? fmt.hash(chain.bestBlockHash, 14) : '—'}</code>
-            </div>
-            <div className="hero-foot muted">
-              {chain ? <>{chain.node.subversion} · {chain.node.connections} peers · updated {new Date(chain.timestamp).toLocaleTimeString()}</> : 'Waiting for node…'}
-            </div>
-          </div>
-          <SyncRing pct={chain?.syncProgressPct ?? 0} />
-        </section>
-
-        <div className="stats">
-          <StatCard label="Difficulty" accent="violet" icon="◆" delay={60}
-            value={chain ? fmt.diff(chain.difficulty) : '—'} sub={chain ? (chain.network === 'regtest' ? 'Regtest minimum' : 'Current target') : ''} />
-          <StatCard label="Mempool" accent="cyan" icon="≋" delay={120}
-            value={chain ? `${fmt.int(chain.mempool.size)} tx` : '—'} sub={chain ? `${fmt.bytes(chain.mempool.bytes)} · ${chain.mempool.totalFeeBtc.toFixed(8)} BTC fees` : ''} />
-          <StatCard label="Headers" accent="green" icon="▤" delay={180}
-            value={chain ? fmt.int(chain.headers) : '—'} sub={chain ? (chain.initialBlockDownload ? 'Initial block download' : 'Fully validated') : ''} />
-          <StatCard label="Chain size" accent="orange" icon="⬢" delay={240}
-            value={chain ? fmt.bytes(chain.sizeOnDisk) : '—'} sub={chain ? (chain.pruned ? 'Pruned node' : 'Full archival') : ''} />
-        </div>
-
-        <RecentBlocks blocks={blocks} newest={newest} />
-        <StageTracker stages={stages} />
-      </main>
+      <div key={walletId ?? section} className="route">
+        {walletId ? <WalletDetail id={walletId} /> : section === 'wallets' ? <Wallets /> : <Dashboard chain={chain} blocks={blocks} stages={stages} newest={newest} />}
+      </div>
 
       <footer className="foot muted">
-        Regtest only · no real funds · <a href="https://bitcoin.org/bitcoin.pdf" target="_blank" rel="noreferrer">Bitcoin white paper</a>
+        Regtest only · no real funds · private keys never leave bitcoind · <a href="https://bitcoin.org/bitcoin.pdf" target="_blank" rel="noreferrer">Bitcoin white paper</a>
       </footer>
     </div>
   )
