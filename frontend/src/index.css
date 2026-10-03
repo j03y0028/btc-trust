@@ -785,12 +785,12 @@ select { font: inherit; color: var(--text); background: rgba(0,0,0,.35); border:
 .login input:focus { border-color: rgba(247,147,26,.6); box-shadow: 0 0 0 3px rgba(247,147,26,.15); }
 .login .btn.primary { margin-top: 8px; justify-content: center; }
 .net-main { background: rgba(247,147,26,.14); color: #ffb35c; border-color: rgba(247,147,26,.35); }
-.ro-pill { font-size: .66rem; letter-spacing: .08em; text-transform: uppercase; font-weight: 700; padding: 4px 8px; border-radius: 999px; color: #7ee2a8; background: rgba(46,204,113,.1); border: 1px solid rgba(46,204,113,.3); }
+.ro-pill { font-size: .66rem; letter-spacing: .08em; text-transform: uppercase; font-weight: 700; padding: 4px 8px; border-radius: 999px; color: #7ee2a8; background: rgba(46,204,113,.1); border: 1px solid rgba(46,204,113,.3); white-space: nowrap; }
 .split-banner { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; padding: 12px 18px; margin-bottom: 18px; font-size: .84rem; }
 .split-banner b { color: var(--text); }
 .split-banner .sb-item { display: flex; gap: 8px; align-items: center; }
 .split-banner .sb-test { color: #ffcf7a; }
-.btn.logout { font-size: .75rem; padding: 6px 12px; }
+.btn.logout { font-size: .75rem; padding: 6px 12px; white-space: nowrap; }
 .wallet-chain { display: flex; flex-direction: column; gap: 6px; }
 .wallet-chain .wc-row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
 .wallet-chain .wc-h { font-family: 'JetBrains Mono', monospace; font-size: 1.6rem; font-weight: 600; }

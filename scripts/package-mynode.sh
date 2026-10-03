@@ -25,6 +25,6 @@ rm -rf "$OUT"; mkdir -p "$OUT/docs"
 cp -r "$APPDIR" "$OUT/btctrust"
 cp mynode/install-mynode.sh mynode/uninstall-mynode.sh "$OUT/"
 cp docs/mynode-install.md "$OUT/docs/"
-cp docker-compose.yml "$OUT/" 2>/dev/null || true
+cp docker-compose.yml btctrust.env.example "$OUT/"
 (cd build && tar czf "btctrust-mynode-v$VERSION.tar.gz" "btctrust-mynode-v$VERSION" && sha256sum "btctrust-mynode-v$VERSION.tar.gz" > "btctrust-mynode-v$VERSION.tar.gz.sha256")
 ls -lh build/*.tar.gz; cat "build/btctrust-mynode-v$VERSION.tar.gz.sha256"

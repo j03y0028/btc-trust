@@ -37,9 +37,12 @@ screenshots/stage1.png
 ## API
 | Endpoint | Description |
 |---|---|
+| `GET /api/healthz` | liveness probe for the Docker healthcheck (no login needed) |
+| `GET /api/auth/status`, `POST /api/auth/{setup,login,logout,passphrase}` | app login: first-run setup with a one-time token, passphrase sign-in (session cookie), change passphrase (revokes all sessions) |
+| `GET /api/mode` | `standalone` or `split`; mainnet allowlist (methods, refused count), wallet chain, whether login is required |
 | `GET /api/health` | RPC connectivity (returns 503 when bitcoind is down) |
 | `GET /api/blockchain` | network, height, headers, best hash, difficulty, sync %, IBD, size on disk, mempool, node version and peers |
-| `GET /api/blocks?count=N` | the newest N blocks (up to 50), newest first |
+| `GET /api/blocks?count=N` | the newest N blocks (up to 50), newest first. Add `?source=mainnet` here or on `/api/blockchain` to read your node through the read-only allowlist |
 | `GET /api/stages` | roadmap stages and their status |
 | `GET /api/wallets` | list wallets with their config and balance |
 | `POST /api/wallets` | create a wallet: `{name, type: multisig\|singlesig\|watchonly, m?, n?, cosignerLabels?, externalKeys?, descriptor?, xpub?}` |
@@ -186,22 +189,31 @@ bash scripts/regtest-node.sh cli -generate 1   # mine a block and watch the dash
   headers, a production CSP, self-hosted fonts, owner-only data files and `.env`, and a clean `npm audit`. Details and remaining items are in
   [docs/security-review.md](docs/security-review.md).
 
+### myNode packaging (Stage 8)
+- **Split mode** (`APP_MODE=split`): the dashboard, daily snapshots and timeline read **mainnet** from your node through `ReadOnlyRpc`
+  ([backend/src/readonly-rpc.ts](backend/src/readonly-rpc.ts)). It is a frozen allowlist of 15 read-only methods; anything else (wallet, send, sign,
+  import, `stop`, any `/wallet/` path, case tricks) is refused with `-32604` **before** a request is sent. Wallets, vaults, messaging and PSBTs
+  run on a **separate regtest/signet node** (`TestChainRpc` refuses to talk to a mainnet node), or are switched off (`WALLET_FEATURES=off`).
+- **Defense in depth:** a dedicated `rpcauth` user plus bitcoind's own `rpcwhitelist` (and `rpcwhitelistdefault=0`). bitcoind returns 403 for
+  everything else, even if the app were compromised. This is tested against a real bitcoind.
+- **App login:** a passphrase set on first run with a one-time setup token, scrypt-hashed (`data/auth.json`), in an HttpOnly SameSite session cookie
+  with lockout. It is required whenever the API binds beyond loopback (`AUTH_MODE=auto|on`).
+- **Packaging:** a multi-stage [Dockerfile](Dockerfile) (one port, 9330, serving the built SPA plus the API; non-root; healthcheck; verified Bitcoin Core
+  31.1 for the test node; amd64 + arm64 via buildx), [docker-compose.yml](docker-compose.yml), and the myNode app definition in [mynode/btctrust](mynode/btctrust)
+  with [install-mynode.sh](mynode/install-mynode.sh) and [uninstall-mynode.sh](mynode/uninstall-mynode.sh). `scripts/package-mynode.sh` builds the tarball.
+- **Install guide for Joey:** [docs/mynode-install.md](docs/mynode-install.md).
+- **Simulated myNode:** `scripts/mynode-sim.sh up`, then `backend/node_modules/.bin/tsx scripts/verify-mynode-sim.mts` (50 end-to-end checks), then
+  `scripts/mynode-sim.sh down`.
+
 ## Roadmap
 0. Foundation ✅ · 1. Node dashboard ✅ · 2. Multisig wallet (2-of-3 P2WSH descriptors) ✅ · 3. Hardware wallets (PSBT/HWI) ✅ ·
 4. Encrypted trust vault ✅ · 5. Trustee messaging ✅ · 6. Timeline (US economy milestones + [white paper](https://bitcoin.org/bitcoin.pdf)), daily mainnet log and goals tracker ✅ ·
-7. Hardening (encrypted trustee keys, device registration, animated UR QR, security review) ✅
+7. Hardening (encrypted trustee keys, device registration, animated UR QR, security review) ✅ ·
+8. myNode packaging (read-only mainnet, test-only wallets, app login, Docker) ✅
 
-Next: Tor transport · myNode packaging · independent security audit · real-device Ledger/Coldcard validation · API authentication
+Next: Tor transport · independent security audit · real-device Ledger/Coldcard validation · install on a physical myNode · per-trustee accounts
 
 ## myNode deployment notes
-- Set `BITCOIN_RPC_HOST`/`PORT`/`USER`/`PASSWORD` to myNode's bitcoind values (see `/mnt/hdd/mynode/bitcoin/bitcoin.conf`, or the
-  RPC credentials shown in the myNode UI under Bitcoin). The default mainnet port is 8332.
-- myNode runs mainnet, so the mainnet guard has to be lifted on purpose (`BITCOIN_NETWORK=main`, `ALLOW_MAINNET=true`).
-  Only do this after the wallet stages have been audited. Reading chain data is harmless, but later stages can spend.
-- bitcoind's `rpcallowip` must include the app's container or host IP. In Docker, set `API_HOST=0.0.0.0` and list the proxy's hostname in
-  `API_ALLOWED_HOSTS`. The API has no user authentication, so only expose it through an authenticating reverse proxy (see docs/security-review.md).
-- For a production build: `npm --prefix frontend run build`, then serve `frontend/dist` behind the same origin as `/api`
-  (myNode's app framework is Docker plus an nginx reverse proxy).
-- Timeline: set `MAINNET_RPC_HOST`/`USER`/`PASSWORD` to myNode's bitcoind and the daily log reads `getblockchaininfo` from your own node,
-  with no mainnet guard change needed, because only read-only RPCs are used and the wallet stages stay on regtest.
-- Stages 2 and 3 need wallet RPC (`disablewallet=0`, which is myNode's default). HWI needs USB passthrough to the container.
+See [docs/mynode-install.md](docs/mynode-install.md). In short: copy the package, run `sudo ./install-mynode.sh`, approve the bitcoind restart, then open
+`http://mynode.local:9330` and enter the setup token. **Do not set `BITCOIN_NETWORK=main` on myNode.** Split mode is the supported setup, and it
+refuses a mainnet wallet chain even with `ALLOW_MAINNET=true`.

@@ -51,8 +51,12 @@ Unchanged items that were checked and are OK:
 - `dangerouslySetInnerHTML` is used only for SVG produced by the `qrcode` library from app data.
 
 ## Remaining risks (for the independent audit)
-1. **No API authentication.** Security relies on loopback binding plus the Host and Origin checks. Any local process can call the API.
-   Before exposing it beyond localhost (`API_HOST=0.0.0.0` on myNode/Docker), put it behind an authenticating reverse proxy or add per-trustee login (backlog).
+1. **Single shared app login (Stage 8).** The API now requires an app passphrase whenever it binds beyond loopback. It is scrypt-hashed, set
+   with a one-time setup token, uses an HttpOnly SameSite=Lax session cookie, and locks out after 5 failures; the WebSocket requires the session too.
+   Remaining gaps: one passphrase for everyone (no per-trustee accounts), in-memory sessions (a restart signs everyone out), and plain HTTP on
+   :9330 inside the LAN (use https on :9331 via myNode's nginx). On loopback the app still has no login (`AUTH_MODE=auto`); set
+   `AUTH_MODE=on` to require it there too.
+   Mainnet access in split mode is limited twice: by the app's read-only allowlist and by bitcoind `rpcwhitelist` for the dedicated `btctrust` user.
 2. **The address-to-cosigner mapping comes from the server.** The browser verifies signatures against the cosigner address that the API reports.
    A malicious server that also rewrote the wallet descriptor could bind its own key. Mitigation: compare safety numbers out of band and verify descriptors on the hardware device.
 3. **XSS while unlocked.** The decrypted keyring is in memory while unlocked. The production CSP blocks inline and third-party script; the dev server has no CSP.

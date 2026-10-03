@@ -49,8 +49,8 @@ describe('StageTracker', () => {
     expect(screen.getByTestId('stage-5')).toHaveClass('stage-complete')
     expect(screen.getByTestId('stage-6')).toHaveClass('stage-complete')
     expect(screen.getByTestId('stage-7')).toHaveClass('stage-complete')
-    expect(screen.getByTestId('stage-8')).toHaveClass('stage-in-progress')
-    expect(screen.getByTestId('stage-count')).toHaveTextContent('8/9')
+    expect(screen.getByTestId('stage-8')).toHaveClass('stage-complete')
+    expect(screen.getByTestId('stage-count')).toHaveTextContent('9/9')
   })
 })
 

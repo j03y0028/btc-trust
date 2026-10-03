@@ -9,7 +9,7 @@ export const DEFAULT_STAGES: Stage[] = [
   { id: 5, title: 'Trustee Messaging', description: 'Private trustee channel', status: 'complete' },
   { id: 6, title: 'Timeline & Goals', description: 'Economy milestones + white paper', status: 'complete' },
   { id: 7, title: 'Hardening', description: 'Encrypted keys, device registration, UR QR', status: 'complete' },
-  { id: 8, title: 'myNode Packaging', description: 'Read-only mainnet, test wallets, app login', status: 'in-progress' },
+  { id: 8, title: 'myNode Packaging', description: 'Read-only mainnet, test wallets, app login', status: 'complete' },
 ]
 
 const LABEL = { complete: 'Complete', 'in-progress': 'In progress', planned: 'Planned' } as const

@@ -36,7 +36,7 @@ describe('syncPercent', () => {
 describe('stages', () => {
   it('lists 7 stages (0-6) with stages 0-5 complete', () => {
     expect(STAGES.map((s) => s.id)).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8]);
-    expect(STAGES.filter((s) => s.status === 'complete').map((s) => s.id)).toEqual([0, 1, 2, 3, 4, 5, 6, 7]);
+    expect(STAGES.filter((s) => s.status === 'complete').map((s) => s.id)).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8]);
   });
 });
 
