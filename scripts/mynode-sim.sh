@@ -8,11 +8,13 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 REPO="$PWD"
 SIM="${SIM:-/tmp/mynode-sim}"
-MYNODE_COMMIT=351432c134
+# myNode code under test: current mynodebtc/mynode master (override: MYNODE_COMMIT=<full 40-char sha>)
+MYNODE_COMMIT="${MYNODE_COMMIT:-$(git ls-remote https://github.com/mynodebtc/mynode.git refs/heads/master | cut -f1)}"
+[ -n "$MYNODE_COMMIT" ] || { echo "cannot resolve mynodebtc/mynode master" >&2; exit 1; }
 REF="$REPO/build/mynode-ref-$MYNODE_COMMIT"
 BITCOIND="${BITCOIND:-bitcoind}"; CLI="${BITCOIN_CLI:-bitcoin-cli}"
 RPCPORT=18643; P2P=18644; APPPORT="${APPPORT:-19330}"
-IMAGE="${IMAGE:-btctrust:0.8.1}"
+IMAGE="${IMAGE:-btctrust:0.8.2}"
 NAME=btctrust-sim
 GW="$(ip -4 addr show docker0 | awk '/inet /{sub(/\/.*/,"",$2);print $2}')"   # = host.docker.internal
 DATADIR="$SIM/mnt/hdd/mynode/bitcoin"
@@ -68,6 +70,10 @@ up() {
     echo 29.3 > "$SIM/home/bitcoin/.mynode/bitcoin_version"   # myNode BTC_VERSION (mynode_app_versions.sh)
     touch "$S/btc_network_settings_defaulted" "$S/btc_ipv4_enabled" "$SIM/mnt/hdd/mynode/.mynode_bitcoin_synced_at_least_once"
     printf '# my own tweaks\nmaxconnections=20\n' > "$S/bitcoin_post_config.conf"   # pre-existing user content must survive
+
+    echo "== myNode's real app loader ($MYNODE_COMMIT): mynode-manage-apps init + install paths for mynode/btctrust"
+    MYNODE_REF="$MYNODE_COMMIT" bash scripts/mynode-loader/run.sh mynode/btctrust >"$SIM/loader.log" 2>&1 \
+        && grep -q '^MYNODE_LOADER_RESULT {.*"ok": true' "$SIM/loader.log" || { tail -40 "$SIM/loader.log"; echo "myNode's loader rejected the app" >&2; exit 1; }
 
     echo "== install-mynode.sh (simulation mode, run twice to prove idempotence)"
     for i in 1 2; do

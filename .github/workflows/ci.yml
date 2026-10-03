@@ -22,6 +22,7 @@ jobs:
       BITCOIN_RPC_PORT: "18443"
       BITCOIN_RPC_USER: ci
       BITCOIN_RPC_PASSWORD: ci-throwaway-regtest-only
+      REQUIRE_MYNODE_LOADER: "1"   # mynode-loader.test.ts must run (docker is available on ubuntu runners)
     steps:
       - uses: actions/checkout@v4
         with:

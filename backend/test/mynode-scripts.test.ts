@@ -86,6 +86,114 @@ describe('install-mynode.sh', () => {
   });
 });
 
+// The app-manager steps (mynode-manage-apps init/install) with a fake manager, driven by MYNODE_MANAGE_APPS.
+// v0.8.1 regression: myNode's loader printed an ERROR for btctrust but exited 0, the installer carried on, and
+// ended with "Unit btctrust.service not found".
+const JOEY_INIT_OUTPUT = [
+  'Found Application: albyhub', ' Loading albyhub...', ' Done.',
+  'Found Application: btctrust', "  ERROR: Error loading btctrust.json file ('NoneType' object has no attribute 'replace')",
+].join('\n');
+function fakeManager(opts: { initOutput?: string; initUnit?: boolean; version?: string; initExit?: number }) {
+  const f = join(tmp, 'fake-mynode-manage-apps');
+  writeFileSync(f, `#!/bin/bash
+echo "$*" >> "${tmp}/manage.calls"
+case "$1" in
+  init) cat <<'OUT'
+${opts.initOutput ?? 'Found Application: btctrust\n Loading btctrust...\n Done.'}
+OUT
+        ${opts.initUnit === false ? '' : 'mkdir -p "$MYNODE_ROOT/etc/systemd/system" && touch "$MYNODE_ROOT/etc/systemd/system/btctrust.service"'}
+        exit ${opts.initExit ?? 0} ;;
+  install|reinstall) mkdir -p "$MYNODE_ROOT/home/bitcoin/.mynode"; touch "$MYNODE_ROOT/home/bitcoin/.mynode/install_btctrust"
+        printf '%s' '${opts.version ?? '__LATEST__'}' > "$MYNODE_ROOT/home/bitcoin/.mynode/btctrust_version" ;;
+esac
+`.replace('__LATEST__', JSON.parse(readFileSync(join(REPO, 'mynode/btctrust/btctrust.json'), 'utf8')).latest_version));
+  chmod(f);
+  return { MYNODE_MANAGE_APPS: f, TMPDIR: tmp };
+}
+const chmod = (f: string) => chmodSync(f, 0o755);
+const calls = () => (existsSync(join(tmp, 'manage.calls')) ? readFileSync(join(tmp, 'manage.calls'), 'utf8').trim().split('\n') : []);
+
+describe('install-mynode.sh with myNode app manager', () => {
+  it('stops at init when myNode reports an ERROR for btctrust (exit 0), removes the broken definition, touches nothing else', () => {
+    const r = run('install-mynode.sh', ['--yes'], fakeManager({ initOutput: JOEY_INIT_OUTPUT, initUnit: false }));
+    expect(r.status).toBe(1);
+    expect(r.stderr).toContain("myNode's app manager failed during 'init'");
+    expect(r.stderr).toContain("'NoneType' object has no attribute 'replace'");
+    expect(calls()).toEqual(['init']);                                     // never got to install
+    expect(existsSync(join(root, 'usr/share/mynode_apps/btctrust'))).toBe(false);
+    expect(existsSync(join(S(), 'btctrust_bitcoin.conf'))).toBe(false);    // no RPC user, no bitcoind change
+  });
+  it('stops when init exits non-zero', () => {
+    const r = run('install-mynode.sh', ['--yes'], fakeManager({ initExit: 3 }));
+    expect(r.status).toBe(1);
+    expect(r.stderr).toContain('exit 3');
+  });
+  it('only warns about ERRORs that belong to other apps', () => {
+    const r = run('install-mynode.sh', ['--yes'], fakeManager({ initOutput: 'Found Application: lndg\n  ERROR: Error loading lndg.json file (x)\nFound Application: btctrust\n Loading btctrust...\n Done.' }));
+    expect(r.status, r.stderr + r.stdout).toBe(0);
+    expect(r.stderr).toContain('OTHER apps');
+  });
+  it('stops when init does not install btctrust.service', () => {
+    const r = run('install-mynode.sh', ['--yes'], fakeManager({ initUnit: false }));
+    expect(r.status).toBe(1);
+    expect(r.stderr).toMatch(/did not install \/etc\/systemd\/system\/btctrust\.service/);
+  });
+  it('stops when myNode records the install as failed', () => {
+    const r = run('install-mynode.sh', ['--yes'], fakeManager({ version: 'error' }));
+    expect(r.status).toBe(1);
+    expect(r.stderr).toContain("install step failed");
+    expect(r.stderr).toContain("= 'error'");
+  });
+  it('installs, then a re-run uses reinstall and leaves the RPC user file byte-identical (no bitcoind restart needed)', () => {
+    const env = fakeManager({});
+    const a = run('install-mynode.sh', ['--yes'], env);
+    expect(a.status, a.stderr + a.stdout).toBe(0);
+    const inc1 = readFileSync(join(S(), 'btctrust_bitcoin.conf'), 'utf8');
+    const b = run('install-mynode.sh', ['--yes', '--no-bitcoin-restart'], env);
+    expect(b.status, b.stderr + b.stdout).toBe(0);
+    expect(readFileSync(join(S(), 'btctrust_bitcoin.conf'), 'utf8')).toBe(inc1);
+    expect(calls()).toEqual(['init', 'install btctrust', 'init', 'reinstall btctrust']);
+    expect(readFileSync(join(S(), 'bitcoin_post_config.conf'), 'utf8').match(/^includeconf=/gm)).toHaveLength(1);
+  });
+  it('refuses a manifest myNode cannot load (null download_source_url, as in v0.8.1) before changing anything', () => {
+    const j = join(pkg, 'btctrust/btctrust.json');
+    writeFileSync(j, readFileSync(j, 'utf8').replace(/"download_source_url": "[^"]*"/, '"download_source_url": null'));
+    const r = run('install-mynode.sh', ['--yes'], fakeManager({}));
+    expect(r.status).toBe(1);
+    expect(r.stderr).toContain('not loadable by myNode');
+    expect(r.stderr).toContain('download_source_url');
+    expect(calls()).toEqual([]);
+  });
+});
+
+describe('recovery from the v0.8.1 half-install (Joey\'s myNode)', () => {
+  it('v0.8.1 left RPC user + env + broken app definition: the new installer finishes with no bitcoind change', () => {
+    // 1. what v0.8.1's installer had already done (its RPC/env steps worked): run the real v0.8.1 script from git
+    const old = join(tmp, 'old'); mkdirSync(old);
+    const show = (path: string) => execFileSync('git', ['-C', REPO, 'show', `v0.8.1:${path}`], { encoding: 'utf8' });
+    writeFileSync(join(old, 'install-mynode.sh'), show('mynode/install-mynode.sh'));
+    cpSync(join(pkg, 'btctrust'), join(old, 'btctrust'), { recursive: true });
+    writeFileSync(join(old, 'btctrust/btctrust.json'), show('mynode/btctrust/btctrust.json'));
+    const o = spawnSync('bash', [join(old, 'install-mynode.sh'), '--yes'], { encoding: 'utf8', env: { ...process.env, MYNODE_ROOT: root, MYNODE_SIM: '1' } });
+    expect(o.status, o.stderr).toBe(0);
+    // 2. what myNode's failed init/install left behind
+    const mn = join(root, 'home/bitcoin/.mynode'); mkdirSync(mn, { recursive: true });
+    writeFileSync(join(mn, 'install_btctrust'), ''); writeFileSync(join(mn, 'btctrust_version'), 'error');
+    mkdirSync(join(root, 'opt/mynode/btctrust'), { recursive: true });
+    const inc = readFileSync(join(S(), 'btctrust_bitcoin.conf'), 'utf8');
+    const env = readFileSync(join(root, 'mnt/hdd/mynode/btctrust/btctrust.env'), 'utf8');
+    expect(readFileSync(join(root, 'usr/share/mynode_apps/btctrust/btctrust.json'), 'utf8')).toContain('"download_source_url": null');
+    // 3. the recovery command
+    const r = run('install-mynode.sh', ['--no-bitcoin-restart', '--yes'], fakeManager({}));
+    expect(r.status, r.stderr + r.stdout).toBe(0);
+    expect(calls()).toEqual(['init', 'reinstall btctrust']);      // install marker present -> reinstall
+    expect(readFileSync(join(S(), 'btctrust_bitcoin.conf'), 'utf8')).toBe(inc);   // same rpcauth: bitcoind's loaded user still valid
+    expect(readFileSync(join(root, 'mnt/hdd/mynode/btctrust/btctrust.env'), 'utf8')).toBe(env);
+    expect(readFileSync(join(S(), 'bitcoin_post_config.conf'), 'utf8').match(/^includeconf=/gm)).toHaveLength(1);
+    expect(readFileSync(join(root, 'usr/share/mynode_apps/btctrust/btctrust.json'), 'utf8')).not.toContain('null');
+  });
+});
+
 describe('uninstall-mynode.sh', () => {
   it('removes the RPC user and app folder, keeps data unless --purge', () => {
     writeFileSync(join(S(), 'bitcoin_post_config.conf'), '# mine\n');
