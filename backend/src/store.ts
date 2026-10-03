@@ -3,8 +3,13 @@ import { join } from 'node:path';
 
 export type WalletType = 'multisig' | 'singlesig' | 'watchonly';
 
+export type SignerKind = 'software' | 'hardware' | 'airgapped';
+
 export interface Cosigner {
   label: string;
+  /** software = bitcoind wallet on this node; hardware = HWI device; airgapped = external xpub, signs via PSBT file/QR. */
+  kind?: SignerKind;
+  device?: { type: string; model: string; label: string | null };
   /** Fingerprint of the cosigner master key (from the key origin). */
   fingerprint: string;
   /** Public key expression, e.g. [fp/84h/1h/0h]tpub.../0/* (never private). */

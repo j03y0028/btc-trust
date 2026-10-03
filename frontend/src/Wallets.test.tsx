@@ -16,7 +16,7 @@ const mockFetch = (h: Handler) => {
 }
 afterEach(() => vi.unstubAllGlobals())
 
-const cos = (i: number) => ({ label: ['Jordan', 'Trustee', 'Backup'][i], fingerprint: `0000000${i}`, key: `[0000000${i}/84h/1h/0h]tpubX/0/*`, local: true })
+const cos = (i: number) => ({ label: ['Jordan', 'Trustee', 'Backup'][i], fingerprint: `0000000${i}`, key: `[0000000${i}/84h/1h/0h]tpubX/0/*`, local: true, kind: 'software' as const })
 const wallet: WalletDetail = {
   id: 'vault-1', name: 'Family Vault', type: 'multisig', network: 'regtest', m: 2, n: 3, watchWallet: 'btctrust-vault-1',
   descriptors: { receive: 'wsh(sortedmulti(2,…))' }, cosigners: [0, 1, 2].map(cos), canSign: true, createdAt: '',
@@ -47,7 +47,7 @@ describe('CreateWalletWizard', () => {
     expect(screen.getByText(/2-of-3 multisig · P2WSH/)).toBeInTheDocument()
     fireEvent.click(screen.getByText('Create wallet'))
     await waitFor(() => expect(onCreated).toHaveBeenCalled())
-    const body = JSON.parse(f.mock.calls[0][1]!.body as string)
+    const body = JSON.parse(f.mock.calls.find((c) => c[1]?.method === 'POST')![1]!.body as string)
     expect(body).toMatchObject({ type: 'multisig', m: 2, n: 3, cosignerLabels: ['Jordan', 'Trustee', 'Backup'] })
   })
 

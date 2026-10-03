@@ -4,6 +4,7 @@ import { navigate } from '../lib/router'
 import { QrCode } from '../components/QrCode'
 import { Modal } from '../components/Modal'
 import { SendFlow } from '../components/SendFlow'
+import { KindBadge } from '../components/KindBadge'
 
 type Tab = 'activity' | 'utxos' | 'keys'
 
@@ -15,6 +16,16 @@ export function WalletDetail({ id }: { id: string }) {
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [verify, setVerify] = useState<{ state: 'busy' | 'ok' | 'bad' | 'err'; text: string } | null>(null)
+
+  const verifyOnDevice = async (cosigner: number) => {
+    if (!address) return
+    setVerify({ state: 'busy', text: 'Check the address on the device screen…' })
+    try {
+      const r = await walletApi.verifyAddress(id, cosigner, address)
+      setVerify(r.match ? { state: 'ok', text: `Device shows ${r.deviceAddress.slice(0, 12)}…${r.deviceAddress.slice(-6)}, which matches (index ${r.index})` } : { state: 'bad', text: `MISMATCH: device shows ${r.deviceAddress}` })
+    } catch (e) { setVerify({ state: 'err', text: (e as Error).message }) }
+  }
 
   const load = useCallback(() => walletApi.get(id).then((d) => { setW(d); setError(null) }).catch((e) => setError(e.message)), [id])
   useEffect(() => {
@@ -62,7 +73,7 @@ export function WalletDetail({ id }: { id: string }) {
             <span className="quorum-text">{w.type === 'watchonly' ? 'Watch-only · sign externally' : `${w.m} of ${w.n} signature${w.m > 1 ? 's' : ''} required to spend`}</span>
           </div>
           <div className="detail-actions">
-            <button className="btn primary" disabled={!w.canSign && w.type !== 'watchonly'} onClick={() => setSending(true)}>↗ Send</button>
+            <button className="btn primary" onClick={() => setSending(true)}>↗ Send</button>
             <button className="btn ghost" disabled={busy} onClick={() => regtest(() => walletApi.fund(id, 5))} title="Regtest faucet: send 5 BTC and confirm">⛲ Faucet 5 BTC</button>
             <button className="btn ghost" disabled={busy} onClick={() => regtest(() => walletApi.mine(1))}>⛏ Mine 1 block</button>
           </div>
@@ -76,8 +87,12 @@ export function WalletDetail({ id }: { id: string }) {
               <code className="addr" data-testid="receive-address">{address}</code>
               <div className="row-actions">
                 <button className="btn small ghost" onClick={() => { navigator.clipboard?.writeText(address); setCopied(true); setTimeout(() => setCopied(false), 1500) }}>{copied ? 'Copied ✓' : 'Copy'}</button>
-                <button className="btn small ghost" onClick={() => walletApi.newAddress(id).then((a) => setAddress(a.address))}>New address</button>
+                <button className="btn small ghost" onClick={() => walletApi.newAddress(id).then((a) => { setAddress(a.address); setVerify(null) })}>New address</button>
+                {w.cosigners.some((c) => c.kind === 'hardware') && (
+                  <button className="btn small hw" onClick={() => verifyOnDevice(w.cosigners.findIndex((c) => c.kind === 'hardware'))} data-testid="verify-device">⌁ Verify on device</button>
+                )}
               </div>
+              {verify && <div className={`verify v-${verify.state}`} role="status">{verify.state === 'ok' ? '✓ ' : verify.state === 'busy' ? '⌁ ' : '⚠ '}{verify.text}</div>}
             </>
           ) : <div className="muted">Generating address…</div>}
         </div>
@@ -130,8 +145,9 @@ export function WalletDetail({ id }: { id: string }) {
               {w.cosigners.map((c, i) => (
                 <li key={i} className="cosigner">
                   <span className="avatar">{c.label.slice(0, 1).toUpperCase()}</span>
-                  <div className="cos-body"><strong>{c.label}</strong><code title={c.key}>{c.fingerprint || 'no origin'} · {c.key.replace(/^\[[^\]]+\]/, '').slice(0, 22)}…</code></div>
-                  <span className={`badge ${c.local ? 'badge-complete' : 'badge-planned'}`}>{c.local ? 'Node signer' : 'External / watch'}</span>
+                  <div className="cos-body"><strong>{c.label}</strong><code title={c.key}>{c.key.match(/^\[([^\]]+)\]/)?.[1] ?? 'no origin'} · {c.key.replace(/^\[[^\]]+\]/, '').slice(0, 22)}…</code></div>
+                  <KindBadge kind={c.kind} />
+                  {c.kind === 'hardware' && <button className="btn small ghost" onClick={() => verifyOnDevice(i)}>Verify address</button>}
                 </li>
               ))}
             </ul>

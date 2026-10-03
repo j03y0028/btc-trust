@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { api, type BlockSummary, type ChainSummary, type Stage } from './lib/api'
-import { navigate, useRoute } from './lib/router'
+import { navigate, useQuery, useRoute } from './lib/router'
 import { DEFAULT_STAGES } from './components/StageTracker'
 import { Dashboard } from './pages/Dashboard'
 import { Wallets } from './pages/Wallets'
 import { WalletDetail } from './pages/WalletDetail'
+import { Devices } from './pages/Devices'
 
 const POLL_MS = 5000
 
@@ -35,8 +36,10 @@ export default function App() {
     return () => clearInterval(t)
   }, [refresh])
 
-  const walletId = path.match(/^\/wallets\/([^/]+)/)?.[1]
-  const section = path.startsWith('/wallets') ? 'wallets' : 'dashboard'
+  const query = useQuery(path)
+  const walletId = path.match(/^\/wallets\/([^/?]+)/)?.[1]
+  const section = path.startsWith('/wallets') ? 'wallets' : path.startsWith('/devices') ? 'devices' : 'dashboard'
+  const preset = query.new === 'multisig' || query.new === 'singlesig' ? { choice: query.new as 'multisig' | 'singlesig', hw: query.hw } : undefined
 
   return (
     <div className="app">
@@ -53,6 +56,7 @@ export default function App() {
           <span className={`nav-indicator at-${section}`} aria-hidden />
           <button className={section === 'dashboard' ? 'active' : ''} onClick={() => navigate('/')}>Dashboard</button>
           <button className={section === 'wallets' ? 'active' : ''} onClick={() => navigate('/wallets')}>Wallets</button>
+          <button className={section === 'devices' ? 'active' : ''} onClick={() => navigate('/devices')}>Devices</button>
         </nav>
         <div className="status">
           {chain && <span className={`net net-${chain.network}`}>{chain.network}</span>}
@@ -65,8 +69,11 @@ export default function App() {
 
       {error && <div className="glass alert" role="alert">⚠ {error}</div>}
 
-      <div key={walletId ?? section} className="route">
-        {walletId ? <WalletDetail id={walletId} /> : section === 'wallets' ? <Wallets /> : <Dashboard chain={chain} blocks={blocks} stages={stages} newest={newest} />}
+      <div key={path} className="route">
+        {walletId ? <WalletDetail id={walletId} />
+          : section === 'wallets' ? <Wallets preset={preset} />
+          : section === 'devices' ? <Devices />
+          : <Dashboard chain={chain} blocks={blocks} stages={stages} newest={newest} />}
       </div>
 
       <footer className="foot muted">

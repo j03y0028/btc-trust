@@ -8,17 +8,31 @@ import { WalletStore } from './store.js';
 import { WalletService } from './wallets.js';
 import { HttpError, statusFor } from './errors.js';
 import { Faucet } from './faucet.js';
+import { HwiCliAdapter, type HwiAdapter } from './hwi.js';
+import { MockHwiAdapter } from './hwi-mock.js';
+import { DeviceService, type KeyPurpose } from './devices.js';
+
+export function hwiFromConfig(cfg: AppConfig, rpc: BitcoinRpc): HwiAdapter | null {
+  const { mode, bin, emulators, timeoutMs } = cfg.hwi;
+  if (mode === 'off') return null;
+  if (mode === 'mock') return new MockHwiAdapter(rpc);
+  if (mode === 'cli' || HwiCliAdapter.available(bin)) return new HwiCliAdapter({ bin, network: cfg.network, emulators, timeoutMs });
+  return null;
+}
 
 /** Extended private keys must never leave the node. */
 const XPRV_RE = /\b[tx]prv[1-9A-HJ-NP-Za-km-z]{100,}/;
 
-export function createApp(cfg: AppConfig, rpc = new BitcoinRpc(cfg), store = new WalletStore(cfg.dataDir, cfg.network)) {
+export function createApp(cfg: AppConfig, rpc = new BitcoinRpc(cfg), store = new WalletStore(cfg.dataDir, cfg.network), hwi: HwiAdapter | null = hwiFromConfig(cfg, rpc)) {
   const svc = new ChainService(rpc);
-  const wallets = new WalletService(rpc, store, cfg.network);
+  const devices = new DeviceService(hwi, cfg.network);
+  const wallets = new WalletService(rpc, store, cfg.network, devices);
   const faucet = new Faucet(rpc, cfg.network);
   const app = express();
   app.use(cors({ origin: [/^http:\/\/localhost(:\d+)?$/, /^http:\/\/127\.0\.0\.1(:\d+)?$/] }));
   app.use(express.json({ limit: '2mb' }));
+  app.use(express.raw({ type: 'application/octet-stream', limit: '2mb' }));
+  app.use(express.text({ type: 'text/plain', limit: '2mb' }));
 
   // Response guard: refuse to send anything that looks like an extended private key.
   app.use((_req, res, next) => {
@@ -73,7 +87,39 @@ export function createApp(cfg: AppConfig, rpc = new BitcoinRpc(cfg), store = new
   app.post('/api/wallets/:id/address', async (req, res) => res.json(await wallets.newAddress(id(req))));
   app.post('/api/wallets/:id/psbt', async (req, res) => res.json(await wallets.createPsbt(id(req), req.body)));
   app.post('/api/wallets/:id/psbt/decode', async (req, res) => res.json(await wallets.decode(id(req), psbtOf(req))));
-  app.post('/api/wallets/:id/psbt/sign', async (req, res) => res.json(await wallets.sign(id(req), psbtOf(req), Number(req.body?.cosigner))));
+  app.post('/api/wallets/:id/psbt/sign', async (req, res) => {
+    const c = req.body?.cosigner;
+    res.json(await wallets.sign(id(req), psbtOf(req), { cosigner: c === undefined || c === null || c === 'auto' ? undefined : Number(c), fallback: req.body?.fallback === true }));
+  });
+  app.post('/api/wallets/:id/psbt/export', async (req, res) => {
+    const buf = wallets.exportPsbt(psbtOf(req));
+    const info = await wallets.decode(id(req), psbtOf(req));
+    res.setHeader('content-type', 'application/octet-stream');
+    res.setHeader('content-disposition', `attachment; filename="${id(req)}-${info.txid.slice(0, 8)}-${info.signatures}of${info.required}.psbt"`);
+    res.send(buf);
+  });
+  app.post('/api/wallets/:id/psbt/import', async (req, res) => {
+    // Accepts a binary .psbt file (application/octet-stream), base64/hex text, or JSON {psbt, base?}.
+    const base = typeof req.query.base === 'string' ? req.query.base : req.body?.base;
+    const data = Buffer.isBuffer(req.body) ? req.body : typeof req.body === 'string' ? req.body : req.body?.psbt;
+    if (!data || (typeof data === 'string' && !data.trim()) || (Buffer.isBuffer(data) && !data.length)) throw new HttpError(400, 'PSBT file or text is required');
+    res.json(await wallets.importPsbt(id(req), data, base));
+  });
+  app.post('/api/wallets/:id/verify-address', async (req, res) => {
+    res.json(await wallets.verifyAddress(id(req), Number(req.body?.cosigner), String(req.body?.address ?? '')));
+  });
+
+  // ---- Hardware wallets (HWI) ----
+  app.get('/api/devices/status', async (_req, res) => res.json(await devices.status()));
+  app.get('/api/devices', async (req, res) => {
+    if (!devices.available) { res.json([]); return; }
+    res.json(await devices.list(req.query.refresh === '1'));
+  });
+  app.post('/api/devices/:fingerprint/xpub', async (req, res) => {
+    const purpose = (req.body?.purpose ?? 'multisig') as KeyPurpose;
+    if (purpose !== 'multisig' && purpose !== 'singlesig') throw new HttpError(400, 'purpose must be multisig or singlesig');
+    res.json(await devices.xpub(String(req.params.fingerprint), purpose, Number(req.body?.account ?? 0)));
+  });
   app.post('/api/wallets/:id/psbt/combine', async (req, res) => res.json(await wallets.combine(id(req), req.body?.psbts)));
   app.post('/api/wallets/:id/psbt/finalize', async (req, res) => res.json(await wallets.finalize(id(req), psbtOf(req))));
   app.post('/api/wallets/:id/psbt/broadcast', async (req, res) => res.json(await wallets.broadcast(id(req), psbtOf(req))));

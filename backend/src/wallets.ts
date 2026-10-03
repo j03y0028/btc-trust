@@ -1,7 +1,9 @@
 import { randomBytes } from 'node:crypto';
 import { BitcoinRpc, RpcError } from './rpc.js';
 import { HttpError } from './errors.js';
-import type { Cosigner, WalletConfig, WalletStore, WalletType } from './store.js';
+import type { Cosigner, SignerKind, WalletConfig, WalletStore, WalletType } from './store.js';
+import type { DeviceService } from './devices.js';
+import { sameWitnessProgram } from './bech32.js';
 
 export const MAX_KEYS = 15;
 const PRIVATE_KEY_RE = /\b[tx]prv[1-9A-HJ-NP-Za-km-z]{20,}|\b[c59KL][1-9A-HJ-NP-Za-km-z]{50,51}\b/;
@@ -13,8 +15,10 @@ export interface CreateWalletInput {
   m?: number;
   n?: number;
   cosignerLabels?: string[];
-  /** Optional external cosigner public keys for multisig (e.g. a hardware wallet xpub). */
+  /** Optional air-gapped cosigner public keys for multisig (sign via PSBT file/QR). */
   externalKeys?: string[];
+  /** Hardware wallet cosigners (by master fingerprint). `key` may be pre-fetched; otherwise the xpub is read from the device. */
+  hardware?: { fingerprint: string; key?: string; label?: string; device?: { type: string; model: string; label: string | null } }[];
   /** Watch-only: a full output descriptor ... */
   descriptor?: string;
   /** ... or a bare tpub/xpub (imported as wpkh). */
@@ -93,8 +97,37 @@ export function summarizePsbt(psbt: string, d: DecodedPsbt, required: number): P
   };
 }
 
+export const kindOf = (c: Cosigner): SignerKind => c.kind ?? (c.signerWallet ? 'software' : 'airgapped');
+
+export interface SignOptions { cosigner?: number; fallback?: boolean }
+export interface SignResult extends PsbtInfo {
+  signer: { index: number; label: string; kind: SignerKind; fallback: boolean; reason?: string };
+}
+
 export class WalletService {
-  constructor(private rpc: BitcoinRpc, private store: WalletStore, private network: string) {}
+  constructor(private rpc: BitcoinRpc, private store: WalletStore, private network: string, private devices?: DeviceService) {}
+
+  private async hardwareCosigners(input: CreateWalletInput, purpose: 'multisig' | 'singlesig'): Promise<Cosigner[]> {
+    const out: Cosigner[] = [];
+    for (const h of input.hardware ?? []) {
+      const fp = String(h.fingerprint ?? '').toLowerCase();
+      if (!/^[0-9a-f]{8}$/.test(fp)) throw new HttpError(400, 'hardware.fingerprint must be 8 hex chars');
+      let key = h.key?.trim();
+      let device = h.device;
+      if (key) {
+        assertNoPrivateKeys(key, 'hardware keys');
+        if (!key.toLowerCase().startsWith(`[${fp}/`)) throw new HttpError(400, `Hardware key origin does not match fingerprint ${fp}`);
+        key = this.normalizeExternalKey(key);
+      } else {
+        if (!this.devices) throw new HttpError(503, 'HWI is not configured');
+        const x = await this.devices.xpub(fp, purpose);
+        key = x.key;
+        device = x.device;
+      }
+      out.push({ label: h.label || device?.label || `Hardware ${fp}`, fingerprint: fp, key, kind: 'hardware', ...(device ? { device } : {}) });
+    }
+    return out;
+  }
 
   /** Wallet RPC that transparently loads an unloaded wallet. */
   private async w<T>(wallet: string, method: string, params: unknown[] | Record<string, unknown> = []): Promise<T> {
@@ -161,21 +194,40 @@ export class WalletService {
       const m = input.m ?? 2, n = input.n ?? 3;
       validateMN(m, n);
       const external = (input.externalKeys ?? []).filter(Boolean).map((k) => this.normalizeExternalKey(k));
-      if (external.length > n) throw new HttpError(400, 'More external keys than total keys');
-      const cosigners: Cosigner[] = external.map((key, i) => ({
-        label: labels[i] || `Cosigner ${LETTERS[i]} (external)`,
-        fingerprint: (key.match(/^\[([0-9a-fA-F]{8})/)?.[1] ?? '00000000').toLowerCase(),
-        key,
-      }));
-      for (let i = external.length; i < n; i++) {
+      if (external.length + (input.hardware?.length ?? 0) > n) throw new HttpError(400, 'More hardware/external keys than total keys');
+      const cosigners: Cosigner[] = await this.hardwareCosigners(input, 'multisig');
+      cosigners.forEach((c, i) => { if (labels[i]) c.label = labels[i]; });
+      for (const key of external) {
+        const i = cosigners.length;
+        cosigners.push({
+          label: labels[i] || `Cosigner ${LETTERS[i]} (external)`,
+          fingerprint: (key.match(/^\[([0-9a-fA-F]{8})/)?.[1] ?? '00000000').toLowerCase(),
+          key,
+          kind: 'airgapped',
+        });
+      }
+      if (new Set(cosigners.map((c) => c.key)).size !== cosigners.length) throw new HttpError(400, 'The same key was added twice');
+      for (let i = cosigners.length; i < n; i++) {
         const signerWallet = `${base}-key${i + 1}`;
         const k = await this.createSigner(signerWallet);
-        cosigners.push({ label: labels[i] || `Cosigner ${LETTERS[i]}`, ...k, signerWallet });
+        cosigners.push({ label: labels[i] || `Cosigner ${LETTERS[i]}`, ...k, signerWallet, kind: 'software' });
       }
       const receive = `wsh(sortedmulti(${m},${cosigners.map((c) => c.key).join(',')}))`;
       await this.rpc.call('createwallet', { wallet_name: base, disable_private_keys: true, blank: true, load_on_startup: true });
       const descriptors = await this.importInto(base, receive, changeVariant(receive), 'now');
       const cfg: WalletConfig = { id, name, type: 'multisig', network: this.network, m, n, watchWallet: base, descriptors, cosigners, createdAt: now };
+      this.store.save(cfg);
+      return cfg;
+    }
+
+    if (input.type === 'singlesig' && input.hardware?.length) {
+      if (input.hardware.length !== 1) throw new HttpError(400, 'Single-sig takes exactly one hardware key');
+      const [c] = await this.hardwareCosigners(input, 'singlesig');
+      if (labels[0]) c.label = labels[0];
+      const receive = `wpkh(${c.key})`;
+      await this.rpc.call('createwallet', { wallet_name: base, disable_private_keys: true, blank: true, load_on_startup: true });
+      const descriptors = await this.importInto(base, receive, changeVariant(receive), 'now');
+      const cfg: WalletConfig = { id, name, type: 'singlesig', network: this.network, m: 1, n: 1, watchWallet: base, descriptors, cosigners: [c], createdAt: now };
       this.store.save(cfg);
       return cfg;
     }
@@ -186,7 +238,7 @@ export class WalletService {
       const change = (await this.checksum(changeVariant(receive)!)).descriptor;
       const cfg: WalletConfig = {
         id, name, type: 'singlesig', network: this.network, m: 1, n: 1, watchWallet: base,
-        descriptors: { receive, change }, cosigners: [{ label: labels[0] || 'Hot key', ...k, signerWallet: base }], createdAt: now,
+        descriptors: { receive, change }, cosigners: [{ label: labels[0] || 'Hot key', ...k, signerWallet: base, kind: 'software' }], createdAt: now,
       };
       this.store.save(cfg);
       return cfg;
@@ -204,7 +256,7 @@ export class WalletService {
       const descriptors = await this.importInto(base, receive, changeVariant(receive), input.rescan === false ? 'now' : 0);
       const cfg: WalletConfig = {
         id, name, type: 'watchonly', network: this.network, m: parsed.m, n: parsed.n, watchWallet: base, descriptors,
-        cosigners: parsed.keys.map((k, i) => ({ label: labels[i] || `Key ${LETTERS[i] ?? i + 1}`, ...k })), createdAt: now,
+        cosigners: parsed.keys.map((k, i) => ({ label: labels[i] || `Key ${LETTERS[i] ?? i + 1}`, ...k, kind: 'airgapped' as const })), createdAt: now,
       };
       this.store.save(cfg);
       return cfg;
@@ -231,8 +283,11 @@ export class WalletService {
   publicConfig(w: WalletConfig) {
     return {
       ...w,
-      cosigners: w.cosigners.map(({ signerWallet, ...c }) => ({ ...c, local: !!signerWallet })),
+      cosigners: w.cosigners.map(({ signerWallet, ...c }) => ({ ...c, kind: kindOf({ ...c, signerWallet }), local: !!signerWallet })),
+      /** Enough software keys on this node to spend without any device. */
       canSign: w.cosigners.filter((c) => c.signerWallet).length >= w.m && w.m > 0,
+      /** Enough software + hardware keys to spend without the air-gapped flow. */
+      signable: w.cosigners.filter((c) => kindOf(c) !== 'airgapped').length >= w.m && w.m > 0,
     };
   }
 
@@ -315,17 +370,113 @@ export class WalletService {
     return this.info(this.get(id), psbt);
   }
 
-  async sign(id: string, psbt: string, cosignerIndex: number) {
+  private async signSoftware(w: WalletConfig, c: Cosigner, psbt: string) {
+    const r = await this.w<{ psbt: string }>(c.signerWallet!, 'walletprocesspsbt', { psbt, sign: true, sighashtype: 'ALL', bip32derivs: true, finalize: false });
+    return r.psbt;
+  }
+
+  /**
+   * Sign with one cosigner. Hardware cosigners sign through HWI; if the device is not connected and
+   * `fallback` is set (or no cosigner was chosen), the next unsigned software cosigner on this node signs instead.
+   */
+  async sign(id: string, psbt: string, opts: SignOptions | number = {}): Promise<SignResult> {
+    const o: SignOptions = typeof opts === 'number' ? { cosigner: opts } : opts;
+    const w = this.get(id);
+    const before = await this.info(w, psbt);
+    if (before.complete) throw new HttpError(409, 'PSBT already has enough signatures');
+    const unsigned = (i: number) => !before.signedBy.includes(w.cosigners[i].fingerprint);
+    const softwareFallback = () => w.cosigners.findIndex((c, i) => kindOf(c) === 'software' && unsigned(i));
+
+    let index = o.cosigner;
+    let fallback = false;
+    let reason: string | undefined;
+
+    if (index === undefined || Number.isNaN(index)) {
+      // Auto: prefer a connected hardware wallet, otherwise a software cosigner.
+      for (const [i, c] of w.cosigners.entries()) {
+        if (kindOf(c) === 'hardware' && unsigned(i) && (await this.devices?.find(c.fingerprint))) { index = i; break; }
+      }
+      if (index === undefined || Number.isNaN(index)) {
+        index = softwareFallback();
+        if (index < 0) throw new HttpError(409, 'No connected hardware wallet or software cosigner can add a signature; use the air-gapped PSBT flow');
+        if (w.cosigners.some((c, i) => kindOf(c) === 'hardware' && unsigned(i))) { fallback = true; reason = 'No hardware wallet connected'; }
+      }
+    }
+
+    let c = w.cosigners[index];
+    if (!c) throw new HttpError(400, `No cosigner at index ${index}`);
+    if (!unsigned(index)) throw new HttpError(409, `${c.label} has already signed this PSBT`);
+    const kind = kindOf(c);
+
+    if (kind === 'airgapped') {
+      throw new HttpError(400, `${c.label} is an external key; export the PSBT, sign it on that device and import it back`);
+    }
+
+    let signed: string;
+    if (kind === 'hardware') {
+      const dev = await this.devices?.find(c.fingerprint);
+      if (dev) {
+        signed = await this.devices!.sign(c.fingerprint, psbt);
+      } else {
+        if (!o.fallback) {
+          throw new HttpError(409, `${c.label} is not connected. Connect it, use the air-gapped flow, or sign with a software cosigner instead.`, { code: 'DEVICE_NOT_CONNECTED', fallbackAvailable: softwareFallback() >= 0 });
+        }
+        const fb = softwareFallback();
+        if (fb < 0) throw new HttpError(409, `${c.label} is not connected and no software cosigner is left to fall back to`, { code: 'NO_FALLBACK' });
+        reason = `${c.label} not connected`;
+        fallback = true;
+        index = fb;
+        c = w.cosigners[fb];
+        signed = await this.signSoftware(w, c, psbt);
+      }
+    } else {
+      signed = await this.signSoftware(w, c, psbt);
+    }
+
+    const after = await this.info(w, signed);
+    if (after.signatures <= before.signatures && !after.complete) throw new HttpError(422, `${c.label} could not sign this PSBT`);
+    return { ...after, signer: { index, label: c.label, kind: kindOf(c), fallback, ...(reason ? { reason } : {}) } };
+  }
+
+  /** Show the receive address on a hardware cosigner's screen and check it matches what bitcoind derives. */
+  async verifyAddress(id: string, cosignerIndex: number, address: string) {
     const w = this.get(id);
     const c = w.cosigners[cosignerIndex];
-    if (!c) throw new HttpError(400, `No cosigner at index ${cosignerIndex}`);
-    if (!c.signerWallet) throw new HttpError(400, `${c.label} is an external key; sign it on that device and import the PSBT`);
-    const before = await this.info(w, psbt);
-    if (before.signedBy.includes(c.fingerprint)) throw new HttpError(409, `${c.label} has already signed this PSBT`);
-    const r = await this.w<{ psbt: string }>(c.signerWallet, 'walletprocesspsbt', { psbt, sign: true, sighashtype: 'ALL', bip32derivs: true, finalize: false });
-    const after = await this.info(w, r.psbt);
-    if (after.signatures <= before.signatures && !after.complete) throw new HttpError(422, `${c.label} could not sign this PSBT`);
-    return after;
+    if (!c || kindOf(c) !== 'hardware') throw new HttpError(400, 'Address verification needs a hardware cosigner');
+    if (!this.devices) throw new HttpError(503, 'HWI is not configured');
+    const all = await this.rpc.call<string[]>('deriveaddresses', [w.descriptors.receive, [0, 999]]);
+    const index = all.indexOf(address);
+    if (index < 0) throw new HttpError(400, 'Address does not belong to this wallet (first 1000 receive addresses)');
+    const desc = stripChecksum(w.descriptors.receive).replaceAll('/0/*', `/0/${index}`);
+    const deviceAddress = await this.devices.display(c.fingerprint, desc);
+    return { index, expected: address, deviceAddress, match: sameWitnessProgram(deviceAddress, address) };
+  }
+
+  /** Raw PSBT bytes for an air-gapped signer (BIP-174 binary file). */
+  exportPsbt(psbt: string): Buffer {
+    const buf = Buffer.from(psbt, 'base64');
+    if (buf.subarray(0, 5).toString('hex') !== '70736274ff') throw new HttpError(400, 'Not a PSBT');
+    return buf;
+  }
+
+  /** Parse an imported PSBT (binary file, base64 or hex text) and optionally merge it into the current PSBT. */
+  async importPsbt(id: string, data: Buffer | string, base?: string) {
+    const w = this.get(id);
+    let b64: string;
+    const buf = Buffer.isBuffer(data) ? data : Buffer.from(String(data));
+    if (buf.subarray(0, 5).toString('hex') === '70736274ff') b64 = buf.toString('base64');
+    else {
+      const text = buf.toString('utf8').trim();
+      if (/^70736274ff[0-9a-f]+$/i.test(text)) b64 = Buffer.from(text, 'hex').toString('base64');
+      else b64 = text.replace(/\s+/g, '');
+    }
+    const imported = await this.info(w, b64);
+    if (base && base !== b64) {
+      const baseInfo = await this.info(w, base);
+      if (baseInfo.txid !== imported.txid) throw new HttpError(400, 'Imported PSBT is for a different transaction');
+      return this.combine(id, [base, b64]);
+    }
+    return imported;
   }
 
   async combine(id: string, psbts: string[]) {

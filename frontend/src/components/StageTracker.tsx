@@ -4,7 +4,7 @@ export const DEFAULT_STAGES: Stage[] = [
   { id: 0, title: 'Foundation', description: 'Bitcoin Core on regtest, repo scaffold', status: 'complete' },
   { id: 1, title: 'Node Dashboard', description: 'Live chain stats via JSON-RPC', status: 'complete' },
   { id: 2, title: 'Multisig Wallet', description: '2-of-3 P2WSH descriptor wallet', status: 'complete' },
-  { id: 3, title: 'Hardware Wallets', description: 'PSBT + HWI support', status: 'planned' },
+  { id: 3, title: 'Hardware Wallets', description: 'PSBT + HWI support', status: 'complete' },
   { id: 4, title: 'Trust Vault', description: 'Encrypted trust documentation', status: 'planned' },
   { id: 5, title: 'Trustee Messaging', description: 'Private trustee channel', status: 'planned' },
   { id: 6, title: 'Timeline & Goals', description: 'Economy milestones + white paper', status: 'planned' },

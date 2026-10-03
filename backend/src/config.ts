@@ -25,6 +25,7 @@ export interface AppConfig {
   apiPort: number;
   allowMainnet: boolean;
   dataDir: string;
+  hwi: { mode: 'auto' | 'cli' | 'mock' | 'off'; bin: string; emulators: boolean; timeoutMs: number };
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
@@ -44,5 +45,12 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     apiPort: Number(env.API_PORT ?? 4000),
     allowMainnet,
     dataDir: env.DATA_DIR ?? resolve(import.meta.dirname, '../../data'),
+    hwi: {
+      mode: (env.HWI_MODE ?? 'auto') as AppConfig['hwi']['mode'],
+      bin: env.HWI_PATH ?? '/workspace/hwi/hwi',
+      // Emulators (Trezor emulator, Speculos, Coldcard sim) are only enumerated off-mainnet unless forced.
+      emulators: (env.HWI_EMULATORS ?? (network === 'main' ? 'false' : 'true')) === 'true',
+      timeoutMs: Number(env.HWI_TIMEOUT_MS ?? 120000),
+    },
   };
 }

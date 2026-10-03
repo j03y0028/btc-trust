@@ -11,7 +11,10 @@
     "screenshot": "node scripts/screenshot.mjs",
     "node:reset": "bash scripts/regtest-node.sh reset",
     "seed": "node scripts/seed-demo.mjs",
-    "screenshot:stage2": "node scripts/screenshot-stage2.mjs"
+    "screenshot:stage2": "node scripts/screenshot-stage2.mjs",
+    "emu:start": "bash scripts/trezor-emu.sh start",
+    "emu:stop": "bash scripts/trezor-emu.sh stop",
+    "screenshot:stage3": "node scripts/screenshot-stage3.mjs"
   },
   "devDependencies": {
     "playwright": "^1.63.0"

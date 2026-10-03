@@ -2,12 +2,12 @@ import { useEffect, useState } from 'react'
 import { btc, initial, walletApi, walletKind, type Wallet } from '../lib/api'
 import { navigate } from '../lib/router'
 import { Modal } from '../components/Modal'
-import { CreateWalletWizard } from '../components/CreateWalletWizard'
+import { CreateWalletWizard, type WizardPreset } from '../components/CreateWalletWizard'
 
-export function Wallets() {
+export function Wallets({ preset }: { preset?: WizardPreset } = {}) {
   const [wallets, setWallets] = useState<Wallet[] | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [creating, setCreating] = useState(false)
+  const [creating, setCreating] = useState(!!preset?.choice)
 
   const load = () => walletApi.list().then((w) => { setWallets(w); setError(null) }).catch((e) => setError(e.message))
   useEffect(() => { load() }, [])
@@ -42,14 +42,15 @@ export function Wallets() {
             onClick={() => navigate(`/wallets/${w.id}`)} data-testid="wallet-card">
             <div className="wc-head">
               <span className={`kind kind-${w.type}`}>{walletKind(w)}</span>
-              {!w.canSign && w.type !== 'watchonly' && <span className="badge badge-planned">View only</span>}
+              {w.cosigners.some((c) => c.kind === 'hardware') && <span className="badge badge-hw">⌁ Hardware</span>}
+              {!w.canSign && !w.signable && w.type !== 'watchonly' && <span className="badge badge-planned">View only</span>}
             </div>
             <div className="wc-name">{w.name}</div>
             <div className="wc-balance">{w.balance ? btc(w.balance.total, 4) : '—'} <small>BTC</small></div>
             {w.balance && w.balance.immature > 0 && <div className="wc-sub muted">+{btc(w.balance.immature, 4)} immature</div>}
             <div className="wc-keys">
               {w.cosigners.slice(0, 15).map((c, j) => (
-                <span key={j} className={`key-dot ${c.local ? 'local' : 'ext'}`} title={`${c.label} · ${c.fingerprint}`}>{initial(c.label)}</span>
+                <span key={j} className={`key-dot kd-${c.kind}`} title={`${c.label} · ${c.fingerprint}`}>{initial(c.label)}</span>
               ))}
             </div>
           </button>
@@ -73,7 +74,7 @@ export function Wallets() {
 
       {creating && (
         <Modal title="Create wallet" onClose={() => setCreating(false)} wide>
-          <CreateWalletWizard onCancel={() => setCreating(false)} onCreated={(w) => { setCreating(false); navigate(`/wallets/${w.id}`) }} />
+          <CreateWalletWizard preset={preset} onCancel={() => { setCreating(false); if (preset) navigate('/wallets') }} onCreated={(w) => { setCreating(false); navigate(`/wallets/${w.id}`) }} />
         </Modal>
       )}
     </main>
