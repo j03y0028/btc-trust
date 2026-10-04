@@ -7,7 +7,7 @@ name: btctrust
 
 services:
   testnode:
-    image: ${BTCTRUST_IMAGE:-btctrust:0.8.2}
+    image: ${BTCTRUST_IMAGE:-btctrust:0.8.3}
     command: btctrust-testnode
     user: "${BTCTRUST_UID:-10001}:${BTCTRUST_GID:-10001}"
     environment:
@@ -20,7 +20,7 @@ services:
     restart: unless-stopped
 
   app:
-    image: ${BTCTRUST_IMAGE:-btctrust:0.8.2}
+    image: ${BTCTRUST_IMAGE:-btctrust:0.8.3}
     build: .
     user: "${BTCTRUST_UID:-10001}:${BTCTRUST_GID:-10001}"
     depends_on: [testnode]

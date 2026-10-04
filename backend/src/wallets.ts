@@ -50,6 +50,15 @@ const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(
 const stripChecksum = (d: string) => d.replace(/#[a-z0-9]{8}$/, '').trim();
 const LETTERS = 'ABCDEFGHIJKLMNO';
 
+/** Display name rules (create and rename): trimmed, 1-64 characters, no private keys, no control characters. */
+export function walletName(input: unknown): string {
+  const name = typeof input === 'string' ? input.trim() : '';
+  if (!name || name.length > 64) throw new HttpError(400, 'Wallet name is required (max 64 chars)');
+  if (/[\u0000-\u001f\u007f]/.test(name)) throw new HttpError(400, 'Wallet name cannot contain control characters');
+  assertNoPrivateKeys(name, 'the wallet name');
+  return name;
+}
+
 export function assertNoPrivateKeys(text: string, what = 'input') {
   if (PRIVATE_KEY_RE.test(text)) throw new HttpError(400, `Private keys are not accepted in ${what}. Use public keys (tpub/xpub) only.`);
 }
@@ -182,8 +191,7 @@ export class WalletService {
   }
 
   async create(input: CreateWalletInput): Promise<WalletConfig> {
-    const name = (input.name ?? '').trim();
-    if (!name || name.length > 64) throw new HttpError(400, 'Wallet name is required (max 64 chars)');
+    const name = walletName(input.name);
     assertNoPrivateKeys(JSON.stringify(input), 'wallet creation');
     const id = `${slug(name)}-${randomBytes(3).toString('hex')}`;
     const base = `btctrust-${id}`;
@@ -270,6 +278,16 @@ export class WalletService {
     if (!w) throw new HttpError(404, `Wallet not found: ${id}`);
     return w;
   }
+
+  /** Change only the display name. The id, bitcoind wallet names and descriptors stay as they are. */
+  rename(id: string, name: unknown) {
+    const w = this.get(id);
+    const updated = { ...w, name: walletName(name) };
+    this.store.update(updated);
+    return this.publicConfig(updated);
+  }
+
+  async balanceOf(id: string) { return this.balances(this.get(id)).catch(() => null); }
 
   private async balances(w: WalletConfig) {
     const b = await this.w<{ mine: { trusted: number; untrusted_pending: number; immature: number } }>(w.watchWallet, 'getbalances');

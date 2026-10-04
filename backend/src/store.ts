@@ -50,6 +50,24 @@ export class WalletStore {
   save(w: WalletConfig) {
     const all = this.list().filter((x) => x.id !== w.id);
     all.push(w);
+    this.write(all);
+  }
+  /** Replace an existing entry in place (keeps list order). */
+  update(w: WalletConfig) {
+    const all = this.list();
+    const i = all.findIndex((x) => x.id === w.id);
+    if (i < 0) throw new Error(`wallet ${w.id} not in store`);
+    all[i] = w;
+    this.write(all);
+  }
+  remove(id: string): boolean {
+    const all = this.list();
+    const rest = all.filter((x) => x.id !== id);
+    if (rest.length === all.length) return false;
+    this.write(rest);
+    return true;
+  }
+  private write(all: WalletConfig[]) {
     const tmp = `${this.file}.tmp`;
     writeFileSync(tmp, JSON.stringify(all, null, 2));
     renameSync(tmp, this.file);

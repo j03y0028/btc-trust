@@ -60,6 +60,22 @@ export class VaultService {
   }
 
   get idleMs() { return this.opts.idleMs; }
+
+  /** Wallet deletion: does this wallet have a vault (encrypted documents)? */
+  hasVault(walletId: string) { return existsSync(this.file(this.safeId(walletId))); }
+  /** Wallet deletion: end sessions/challenges and move the encrypted vault + attachments into `dest` (not erased). */
+  archive(walletId: string, dest: string): boolean {
+    this.safeId(walletId);
+    for (const [t, s] of this.sessions) if (s.walletId === walletId) { s.dek.fill(0); this.sessions.delete(t); }
+    for (const [k, p] of this.pending) if (p.walletId === walletId) { p.dek.fill(0); this.pending.delete(k); }
+    this.failures.delete(walletId);
+    const f = this.file(walletId), att = this.attDir(walletId);
+    if (!existsSync(f) && !existsSync(att)) return false;
+    mkdirSync(dest, { recursive: true });
+    if (existsSync(f)) renameSync(f, join(dest, `${walletId}.vault.json`));
+    if (existsSync(att)) renameSync(att, join(dest, 'vault-attachments'));
+    return true;
+  }
   private get dir() { return join(this.opts.dataDir, 'vaults'); }
   private file(w: string) { return join(this.dir, `${w}.vault.json`); }
   private attDir(w: string) { return join(this.dir, w); }

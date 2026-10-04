@@ -194,6 +194,43 @@ describe('recovery from the v0.8.1 half-install (Joey\'s myNode)', () => {
   });
 });
 
+describe('upgrade v0.8.2 -> current (same steps as on a real myNode)', () => {
+  it('keeps btctrust.env passwords, the RPC user and app data; no bitcoind restart needed; myNode reinstall path', () => {
+    const old = join(tmp, 'v082'); mkdirSync(old);
+    const show = (path: string) => execFileSync('git', ['-C', REPO, 'show', `v0.8.2:${path}`], { encoding: 'utf8' });
+    writeFileSync(join(old, 'install-mynode.sh'), show('mynode/install-mynode.sh'));
+    cpSync(join(pkg, 'btctrust'), join(old, 'btctrust'), { recursive: true });
+    writeFileSync(join(old, 'btctrust/btctrust.json'), show('mynode/btctrust/btctrust.json'));
+    const env = fakeManager({});
+    // the v0.8.2 manager writes v0.8.2 as the installed version
+    const v082 = { ...env, MYNODE_MANAGE_APPS: env.MYNODE_MANAGE_APPS };
+    writeFileSync(env.MYNODE_MANAGE_APPS, readFileSync(env.MYNODE_MANAGE_APPS, 'utf8').replace(/printf '%s' '[^']+'/, "printf '%s' 'v0.8.2'"));
+    const a = spawnSync('bash', [join(old, 'install-mynode.sh'), '--yes'], { encoding: 'utf8', env: { ...process.env, MYNODE_ROOT: root, MYNODE_SIM: '1', ...v082 } });
+    expect(a.status, a.stderr + a.stdout).toBe(0);
+    // app data written by v0.8.2 (wallet configs, login, test node chain)
+    const data = join(root, 'mnt/hdd/mynode/btctrust');
+    writeFileSync(join(data, 'app/wallets.regtest.json'), '[{"id":"whitfield-family-aaaaaa","name":"Whitfield Family Trust"}]');
+    writeFileSync(join(data, 'app/auth.json'), '{"hash":"scrypt$..."}');
+    mkdirSync(join(data, 'testnode/regtest/wallets'), { recursive: true }); writeFileSync(join(data, 'testnode/regtest/wallets/x.dat'), 'w');
+    const inc = readFileSync(join(S(), 'btctrust_bitcoin.conf'), 'utf8');
+    const envFile = readFileSync(join(data, 'btctrust.env'), 'utf8');
+    const post = readFileSync(join(S(), 'bitcoin_post_config.conf'), 'utf8');
+
+    const b = run('install-mynode.sh', ['--no-bitcoin-restart', '--yes'], fakeManager({}));
+    expect(b.status, b.stderr + b.stdout).toBe(0);
+    expect(b.stdout).toContain('RPC user file unchanged');
+    expect(readFileSync(join(S(), 'btctrust_bitcoin.conf'), 'utf8')).toBe(inc);
+    expect(readFileSync(join(data, 'btctrust.env'), 'utf8')).toBe(envFile);
+    expect(readFileSync(join(S(), 'bitcoin_post_config.conf'), 'utf8')).toBe(post);
+    expect(readFileSync(join(data, 'app/wallets.regtest.json'), 'utf8')).toContain('Whitfield Family Trust');
+    expect(existsSync(join(data, 'app/auth.json'))).toBe(true);
+    expect(existsSync(join(data, 'testnode/regtest/wallets/x.dat'))).toBe(true);
+    expect(calls().slice(-2)).toEqual(['init', 'reinstall btctrust']);
+    const latest = JSON.parse(readFileSync(join(REPO, 'mynode/btctrust/btctrust.json'), 'utf8')).latest_version;
+    expect(readFileSync(join(root, 'home/bitcoin/.mynode/btctrust_version'), 'utf8')).toBe(latest);
+  });
+});
+
 describe('uninstall-mynode.sh', () => {
   it('removes the RPC user and app folder, keeps data unless --purge', () => {
     writeFileSync(join(S(), 'bitcoin_post_config.conf'), '# mine\n');

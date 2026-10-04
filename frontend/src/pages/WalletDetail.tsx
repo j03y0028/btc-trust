@@ -6,6 +6,8 @@ import { DeviceRegistration } from '../components/DeviceRegistration'
 import { Modal } from '../components/Modal'
 import { SendFlow } from '../components/SendFlow'
 import { KindBadge } from '../components/KindBadge'
+import { WalletName } from '../components/WalletName'
+import { DangerZone } from '../components/DangerZone'
 
 type Tab = 'activity' | 'utxos' | 'keys' | 'devices'
 
@@ -56,7 +58,7 @@ export function WalletDetail({ id }: { id: string }) {
             <span className={`kind kind-${w.type}`}>{walletKind(w)}</span>
             <span className="muted small">{w.type === 'multisig' ? 'P2WSH · wsh(sortedmulti)' : w.type === 'singlesig' ? 'P2WPKH' : 'Watch-only'}</span>
           </div>
-          <h2 className="detail-name">{w.name}</h2>
+          <WalletName id={w.id} name={w.name} onRenamed={(name) => setW((cur) => (cur ? { ...cur, name } : cur))} />
           <div className="detail-balance" data-testid="balance">{btc(w.balance.confirmed, 8)} <small>BTC</small></div>
           <div className="balance-split">
             <span><i className="dot green" />Confirmed {btc(w.balance.confirmed, 4)}</span>
@@ -159,6 +161,8 @@ export function WalletDetail({ id }: { id: string }) {
           </div>
         )}
       </section>
+
+      <DangerZone id={w.id} name={w.name} network={w.network} onDeleted={() => navigate('/wallets')} />
 
       {sending && (
         <Modal title={`Send from ${w.name}`} onClose={() => setSending(false)} wide>

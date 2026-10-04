@@ -226,7 +226,7 @@ input[type=range] { padding: 0; accent-color: var(--orange); background: none; b
 .back:hover { color: var(--text); }
 .detail-grid { display: grid; grid-template-columns: 1.6fr 1fr; gap: 20px; }
 .balance-card { display: flex; flex-direction: column; gap: 10px; position: relative; overflow: hidden; }
-.balance-card::after { content: ''; position: absolute; width: 320px; height: 320px; right: -120px; top: -140px; border-radius: 50%; background: var(--orange); filter: blur(90px); opacity: .18; }
+.balance-card::after { content: ''; pointer-events: none; z-index: 0; position: absolute; width: 320px; height: 320px; right: -120px; top: -140px; border-radius: 50%; background: var(--orange); filter: blur(90px); opacity: .18; }
 .detail-name { margin: 6px 0 0; font-size: 1.3rem; }
 .detail-balance { font-size: 3.2rem; font-weight: 800; letter-spacing: -0.03em; line-height: 1.1; background: linear-gradient(120deg, #fff 0%, #ffd29a 70%, var(--orange) 100%); -webkit-background-clip: text; background-clip: text; color: transparent; }
 .balance-split { display: flex; gap: 18px; font-size: .8rem; color: var(--muted); flex-wrap: wrap; }
@@ -796,3 +796,37 @@ select { font: inherit; color: var(--text); background: rgba(0,0,0,.35); border:
 .wallet-chain .wc-h { font-family: 'JetBrains Mono', monospace; font-size: 1.6rem; font-weight: 600; }
 .ro-methods { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
 .ro-methods code { font-size: .64rem; padding: 2px 6px; border-radius: 6px; background: rgba(255,255,255,.04); border: 1px solid var(--border); color: var(--muted); }
+
+/* ---- Wallet rename (inline) + danger zone ---- */
+.balance-card > * { position: relative; z-index: 1; }   /* above the decorative glow (::after) so its controls stay clickable */
+.name-row { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
+.name-row .detail-name { margin: 0; }
+.icon-btn.pencil { width: 30px; height: 30px; display: inline-grid; place-items: center; border-radius: 9px; color: var(--muted); background: transparent; border: 1px solid transparent; cursor: pointer; opacity: .55; transition: opacity .2s, color .2s, background .2s, border-color .2s; }
+.balance-card:hover .icon-btn.pencil, .icon-btn.pencil:focus-visible { opacity: 1; }
+.icon-btn.pencil:hover { color: var(--orange); background: rgba(247,147,26,.08); border-color: rgba(247,147,26,.25); }
+.name-edit { margin-top: 6px; display: grid; gap: 6px; }
+.name-edit-row { display: flex; gap: 8px; align-items: center; }
+.name-edit-row input { flex: 1; min-width: 0; font-size: 1.15rem; font-weight: 700; padding: 8px 12px; }
+.name-edit-meta { display: flex; gap: 12px; align-items: baseline; }
+.name-edit .counter { font-size: .72rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.name-edit .counter.over { color: #ff8fa3; }
+
+.danger-zone { margin-top: 18px; border-color: rgba(255,92,122,.22); background: linear-gradient(180deg, rgba(255,92,122,.05), rgba(255,92,122,.015)); }
+.danger-zone:hover { border-color: rgba(255,92,122,.38); }
+.danger-zone h2 { margin: 0 0 4px; font-size: 1rem; color: #ff8fa3; letter-spacing: .01em; }
+.danger-zone p { margin: 0; }
+.dz-body { display: flex; justify-content: space-between; align-items: center; gap: 18px; flex-wrap: wrap; }
+.btn.danger-solid { border: 1px solid rgba(255,92,122,.45); color: #ffd6de; background: linear-gradient(135deg, rgba(255,92,122,.28), rgba(214,40,80,.32)); box-shadow: 0 6px 20px rgba(214,40,80,.18); }
+.btn.danger-solid:hover:not(:disabled) { background: linear-gradient(135deg, rgba(255,92,122,.42), rgba(214,40,80,.5)); box-shadow: 0 8px 26px rgba(214,40,80,.32); }
+.dz-modal { display: grid; gap: 14px; }
+.dz-warning { padding: 12px 14px; border-radius: 14px; border: 1px solid rgba(255,92,122,.35); background: rgba(255,92,122,.08); color: #ffd6de; font-size: .88rem; line-height: 1.5; }
+.dz-warning strong { color: #ff8fa3; }
+.dz-impact { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.dz-impact li { display: flex; justify-content: space-between; gap: 12px; padding: 8px 12px; border-radius: 10px; background: rgba(255,255,255,.03); font-size: .85rem; }
+.dz-impact li span { color: var(--muted); }
+.dz-ack { display: flex; gap: 10px; align-items: flex-start; font-size: .84rem; line-height: 1.45; color: #ffc070; }
+.dz-ack input { margin-top: 3px; accent-color: #ff5c7a; }
+.dz-confirm { display: grid; gap: 6px; font-size: .85rem; }
+.dz-confirm code { color: var(--text); background: rgba(255,255,255,.07); padding: 1px 6px; border-radius: 6px; }
+.dz-confirm input:focus { border-color: rgba(255,92,122,.6); box-shadow: 0 0 0 3px rgba(255,92,122,.15); }
+.dz-actions { display: flex; justify-content: flex-end; gap: 10px; }

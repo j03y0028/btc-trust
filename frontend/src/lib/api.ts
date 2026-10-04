@@ -108,15 +108,26 @@ export class ApiError extends Error {
   constructor(message: string, status: number, details?: Record<string, unknown>) { super(message); this.status = status; this.details = details }
 }
 
-async function post<T>(path: string, body: unknown = {}): Promise<T> {
-  const r = await fetch(path, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) })
+async function post<T>(path: string, body: unknown = {}, method: 'POST' | 'PATCH' | 'DELETE' = 'POST'): Promise<T> {
+  const r = await fetch(path, { method, headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) })
   const data = await r.json().catch(() => ({}))
   if (!r.ok) throw new ApiError(data.error ?? `HTTP ${r.status}`, r.status, data.details)
   return data as T
 }
 
+export interface DeleteImpact {
+  id: string; name: string; network: string; deletable: boolean; reason?: string
+  balance: Balance | null; vault: boolean; messages: number; trustees: number; openSigRequests: number; registrations: number
+  bitcoindWallets: string[]; needsAcknowledge: boolean
+}
+export interface DeleteResult { deleted: string; name: string; unloaded: string[]; archivedTo: string }
+
 export const walletApi = {
   list: () => get<Wallet[]>('/api/wallets'),
+  /** Display name only; id, bitcoind wallets and descriptors never change. */
+  rename: (id: string, name: string) => post<Wallet>(`/api/wallets/${id}`, { name }, 'PATCH'),
+  deleteCheck: (id: string) => get<DeleteImpact>(`/api/wallets/${id}/delete-check`),
+  remove: (id: string, confirmName: string, acknowledge = false) => post<DeleteResult>(`/api/wallets/${id}`, { confirmName, acknowledge }, 'DELETE'),
   create: (input: CreateWalletInput) => post<Wallet>('/api/wallets', input),
   get: (id: string) => get<WalletDetail>(`/api/wallets/${id}`),
   newAddress: (id: string) => post<{ address: string }>(`/api/wallets/${id}/address`),

@@ -168,6 +168,7 @@ umask 022
 if id bitcoin >/dev/null 2>&1; then chown root:bitcoin "$INCLUDE"; fi
 chmod 640 "$INCLUDE"
 [ "$OLD_INCLUDE" = "$(cat "$INCLUDE")" ] && INCLUDE_CHANGED=0 || INCLUDE_CHANGED=1
+[ "$INCLUDE_CHANGED" = 0 ] && echo "RPC user file unchanged (same password as before): bitcoind needs no restart for it"
 
 if [ -f "$CUSTOM" ]; then
     warn "$CUSTOM exists, so myNode uses it as bitcoin.conf and ignores bitcoin_post_config.conf."

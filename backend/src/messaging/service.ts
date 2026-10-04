@@ -68,6 +68,25 @@ export class MessagingService {
     writeFileSync(`${f}.tmp`, JSON.stringify(d, null, 1));
     renameSync(`${f}.tmp`, f);
   }
+  /** Wallet deletion: what messaging data exists (counts only). */
+  usage(walletId: string) {
+    const f = this.file(walletId);
+    const d: Data | undefined = this.cache.get(walletId) ?? (existsSync(f) ? JSON.parse(readFileSync(f, 'utf8')) : undefined);
+    return {
+      messages: d?.messages.length ?? 0,
+      identities: d ? Object.keys(d.identities).length : 0,
+      openSigRequests: d?.sigRequests.filter((r) => r.status !== 'broadcast').length ?? 0,
+    };
+  }
+  /** Wallet deletion: move the wallet's messaging file into `dest` (not erased) and forget it. */
+  archive(walletId: string, dest: string): boolean {
+    const f = this.file(walletId);
+    this.cache.delete(walletId);
+    if (!existsSync(f)) return false;
+    mkdirSync(dest, { recursive: true });
+    renameSync(f, join(dest, 'messaging.json'));
+    return true;
+  }
   /** Drop the in-memory cache (used by tests that edit the file on disk). */
   reload(walletId: string) { this.cache.delete(walletId); }
   private emit(e: HubEvent) { this.hub.emit('event', e); }

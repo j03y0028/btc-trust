@@ -6,6 +6,7 @@ import { ChainService } from './service.js';
 import { STAGES } from './stages.js';
 import { WalletStore } from './store.js';
 import { WalletService } from './wallets.js';
+import { WalletAdmin } from './wallet-admin.js';
 import { HttpError, statusFor } from './errors.js';
 import { Faucet } from './faucet.js';
 import { HwiCliAdapter, type HwiAdapter } from './hwi.js';
@@ -52,6 +53,7 @@ export function createApp(cfg: AppConfig, rpc: BitcoinRpc = walletRpcFor(cfg), s
   const messaging = new MessagingService(wallets, new IdentityKeys(rpc, wallets, devices, cfg.network), { dataDir: cfg.dataDir });
   const vault = new VaultService(rpc, wallets, devices, faucet, { dataDir: cfg.dataDir, network: cfg.network, idleMs: cfg.vault.idleMs, kdfN: cfg.vault.kdfN });
   const registration = new RegistrationService(wallets, devices, { dataDir: cfg.dataDir, network: cfg.network });
+  const admin = new WalletAdmin(rpc, store, wallets, vault, messaging, registration, { dataDir: cfg.dataDir, network: cfg.network });
   const app = express();
   app.locals.messaging = messaging;
   app.locals.timeline = timeline;
@@ -150,6 +152,11 @@ export function createApp(cfg: AppConfig, rpc: BitcoinRpc = walletRpcFor(cfg), s
   app.get('/api/wallets', async (_req, res) => res.json(await wallets.list()));
   app.post('/api/wallets', async (req, res) => res.status(201).json(wallets.publicConfig(await wallets.create(req.body ?? {}))));
   app.get('/api/wallets/:id', async (req, res) => res.json(await wallets.details(id(req))));
+  // Rename: display name only (id, bitcoind wallet names and descriptors never change).
+  app.patch('/api/wallets/:id', (req, res) => { res.json(admin.rename(id(req), req.body)); });
+  // Delete (regtest test wallets only): impact preview, then delete with the typed name as confirmation.
+  app.get('/api/wallets/:id/delete-check', async (req, res) => { res.json(await admin.impact(id(req))); });
+  app.delete('/api/wallets/:id', async (req, res) => { res.json(await admin.delete(id(req), req.body ?? {})); });
   app.post('/api/wallets/:id/address', async (req, res) => res.json(await wallets.newAddress(id(req))));
   app.post('/api/wallets/:id/psbt', async (req, res) => res.json(await wallets.createPsbt(id(req), req.body)));
   app.post('/api/wallets/:id/psbt/decode', async (req, res) => res.json(await wallets.decode(id(req), psbtOf(req))));

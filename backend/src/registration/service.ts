@@ -29,6 +29,18 @@ export class RegistrationService {
     all[walletId] = [...(all[walletId] ?? []).filter((x) => !(x.cosigner === r.cosigner && x.device === r.device)), r];
     this.write(all);
   }
+  /** Wallet deletion: number of device registrations recorded for this wallet. */
+  count(walletId: string) { return (this.read()[walletId] ?? []).length; }
+  /** Wallet deletion: move this wallet's registrations into `dest`/registrations.json and drop them. */
+  archive(walletId: string, dest: string): boolean {
+    const all = this.read();
+    if (!all[walletId]) return false;
+    mkdirSync(dest, { recursive: true });
+    writeFileSync(join(dest, 'registrations.json'), JSON.stringify(all[walletId], null, 2));
+    delete all[walletId];
+    this.write(all);
+    return true;
+  }
   private wallet(id: string) {
     const w = this.wallets.get(id);
     if (w.type !== 'multisig' && w.type !== 'watchonly') throw new HttpError(400, 'Registration applies to multisig wallets');

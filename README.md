@@ -24,7 +24,7 @@ Bitcoin Core over JSON-RPC.
 |---|---|
 | 0 · Foundation | Verified Bitcoin Core 31.1 on regtest, repo scaffold, config with a mainnet guard |
 | 1 · Node dashboard | Live chain stats, mempool, recent blocks |
-| 2 · Multisig wallet | m-of-n P2WSH descriptor wallets (2-of-3 default), single-sig, watch-only, full PSBT lifecycle, regtest faucet |
+| 2 · Multisig wallet | m-of-n P2WSH descriptor wallets (2-of-3 default), single-sig, watch-only, full PSBT lifecycle, regtest faucet, rename and delete (regtest test wallets only) |
 | 3 · Hardware wallets | HWI integration (Trezor/Ledger/Coldcard…), PSBT export/import, on-device address verification, software-signer fallback |
 | 4 · Trust vault | Passphrase-encrypted documents (scrypt + AES-256-GCM), templates (deed, beneficiaries, trustees…), attachments, an optional wallet-signature second factor, backups |
 | 5 · Trustee messaging | End-to-end encrypted group and DM threads, keys bound to cosigners by signmessage attestations, signature requests linked to PSBTs |
@@ -97,6 +97,9 @@ screenshots/stage1.png
 | `GET /api/wallets` | list wallets with their config and balance |
 | `POST /api/wallets` | create a wallet: `{name, type: multisig\|singlesig\|watchonly, m?, n?, cosignerLabels?, externalKeys?, descriptor?, xpub?}` |
 | `GET /api/wallets/:id` | details: balance, public descriptors, cosigners, addresses, UTXOs, history |
+| `PATCH /api/wallets/:id` | rename: `{name}` (1-64 chars). Only the display name changes; the id, bitcoind wallets and descriptors never do |
+| `GET /api/wallets/:id/delete-check` | what deleting would affect: test balance, vault, open signature requests, messages, test-node wallets |
+| `DELETE /api/wallets/:id` | delete a **regtest** test wallet: `{confirmName, acknowledge?}`. Unloads its test-node wallets (files kept), archives its data to `deleted/`. Refused (403) on any other chain |
 | `POST /api/wallets/:id/address` | new receive address |
 | `POST /api/wallets/:id/psbt` | build a funded PSBT `{outputs:[{address, amount}], feeRate?}` |
 | `POST /api/wallets/:id/psbt/{decode,sign,combine,finalize,broadcast}` | PSBT lifecycle (`sign` takes `{psbt, cosigner}`) |
