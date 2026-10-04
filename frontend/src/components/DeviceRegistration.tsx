@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { QrCode } from './QrCode'
+import { CopyButton } from './CopyButton'
 
 interface Reg { cosigner: number; fingerprint: string; device: 'ledger' | 'coldcard'; mock: boolean; at: string; policyId?: string; hmac?: string; fileSha256?: string; name?: string; valid?: boolean }
 interface Cos { cosigner: number; label: string; fingerprint: string; kind: string; deviceType: string | null; connected: { type: string; model: string } | null; trezor: { required: false; reason: string } | null; registrations: Reg[] }
@@ -60,7 +61,7 @@ export function DeviceRegistration({ walletId }: { walletId: string }) {
             <pre className="cc-file" data-testid="coldcard-file">{cc.text}</pre>
             <div className="row-gap">
               <a className="btn small primary" href={`/api/wallets/${walletId}/registration/coldcard.txt`} download={cc.filename}>⬇ Download for SD card</a>
-              <button className="btn small ghost" onClick={() => navigator.clipboard?.writeText(cc.text)}>Copy</button>
+              <CopyButton text={cc.text} />
             </div>
           </div>
           <div className="cc-side">

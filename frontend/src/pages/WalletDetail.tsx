@@ -11,6 +11,7 @@ import { DangerZone } from '../components/DangerZone'
 import { Amount } from '../components/Amount'
 import { useDisplay } from '../lib/display'
 import { formatUnit, toSats } from '../lib/money'
+import { CopyButton } from '../components/CopyButton'
 
 type Tab = 'activity' | 'utxos' | 'keys' | 'devices'
 
@@ -21,7 +22,6 @@ export function WalletDetail({ id }: { id: string }) {
   const [sending, setSending] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
-  const [copied, setCopied] = useState(false)
   const display = useDisplay()
   /** amount in the chosen unit, with its label */
   const u = (btcAmount: number, digits: number) => `${formatUnit(toSats(btcAmount), display.unit, digits)} ${display.unit}`
@@ -96,7 +96,7 @@ export function WalletDetail({ id }: { id: string }) {
               <QrCode value={`bitcoin:${address}`} size={168} />
               <code className="addr" data-testid="receive-address">{address}</code>
               <div className="row-actions">
-                <button className="btn small ghost" onClick={() => { navigator.clipboard?.writeText(address); setCopied(true); setTimeout(() => setCopied(false), 1500) }}>{copied ? 'Copied ✓' : 'Copy'}</button>
+                <CopyButton text={address} />
                 <button className="btn small ghost" onClick={() => walletApi.newAddress(id).then((a) => { setAddress(a.address); setVerify(null) })}>New address</button>
                 {w.cosigners.some((c) => c.kind === 'hardware') && (
                   <button className="btn small hw" onClick={() => verifyOnDevice(w.cosigners.findIndex((c) => c.kind === 'hardware'))} data-testid="verify-device">⌁ Verify on device</button>

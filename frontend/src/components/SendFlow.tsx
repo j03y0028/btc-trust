@@ -5,6 +5,7 @@ import { KindBadge } from './KindBadge'
 import { QrCode } from './QrCode'
 import { AnimatedQr, UrScanner } from './AnimatedQr'
 import { RequestSignature } from './RequestSignature'
+import { CopyButton } from './CopyButton'
 
 /** Single-frame QR limit for base64 PSBTs (version 40, low ECC ≈ 2.9 KB; keep margin for scanners). */
 export const QR_MAX = 2200
@@ -20,7 +21,6 @@ export function SendFlow({ wallet, onDone }: { wallet: WalletDetail; onDone: () 
   const [txid, setTxid] = useState<string | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [copied, setCopied] = useState(false)
   const [devices, setDevices] = useState<HwDevice[]>([])
   const [offline, setOffline] = useState<Record<number, boolean>>({})
   const [log, setLog] = useState<{ text: string; tone: 'ok' | 'warn' }[]>([])
@@ -160,7 +160,7 @@ export function SendFlow({ wallet, onDone }: { wallet: WalletDetail; onDone: () 
                 <div className="psbt-actions">
                   <button className="btn small" onClick={download} disabled={!!busy}>⬇ Download .psbt</button>
                   <button className="btn small ghost" onClick={() => setShowQr((v) => !v)}>{showQr ? 'Hide QR' : '▦ Show QR'}</button>
-                  <button className="btn small ghost" onClick={() => { navigator.clipboard?.writeText(psbt.psbt); setCopied(true); setTimeout(() => setCopied(false), 1500) }}>{copied ? 'Copied ✓' : 'Copy base64'}</button>
+                  <CopyButton text={psbt.psbt} label="Copy base64" />
                 </div>
                 {showQr && (psbt.psbt.length > QR_MAX || qrMode === 'ur' || (qrMode === 'auto' && psbt.psbt.length > UR_FROM)
                   ? <div className="psbt-qr"><AnimatedQr psbt={psbt.psbt} size={220} /><span className="hint">{psbt.psbt.length} chars · animated BC-UR (fountain codes) · scan with Sparrow, Keystone, Passport…</span>

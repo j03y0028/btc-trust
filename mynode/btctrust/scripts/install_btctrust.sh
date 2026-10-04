@@ -12,7 +12,7 @@ echo "==================== INSTALLING APP ===================="
 
 ARCH=$(uname -m)                       # aarch64 (Raspberry Pi / RockPro64) or x86_64
 IMG_TAR="app_data/btctrust-image-${ARCH}.tar.gz"
-VERSION_TAG="${VERSION:-v0.8.4}"
+VERSION_TAG="${VERSION:-v0.8.5}"
 
 mkdir -p /mnt/hdd/mynode/btctrust/app /mnt/hdd/mynode/btctrust/testnode
 chmod 700 /mnt/hdd/mynode/btctrust /mnt/hdd/mynode/btctrust/app /mnt/hdd/mynode/btctrust/testnode

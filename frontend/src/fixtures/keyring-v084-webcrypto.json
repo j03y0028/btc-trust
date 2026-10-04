@@ -1,0 +1,26 @@
+{
+  "passphrase": "whitfield family keyring 2026",
+  "ring": {
+    "whitfield-family-trust": {
+      "Avery Whitfield": {
+        "note": "fixture: created by the v0.8.4 keystore (WebCrypto)",
+        "n": 42
+      }
+    }
+  },
+  "blob": {
+    "v": 2,
+    "kdf": {
+      "name": "scrypt",
+      "N": 131072,
+      "r": 8,
+      "p": 1,
+      "salt": "VdWVKPmoHfofYlIEkjOQQA=="
+    },
+    "cipher": "AES-256-GCM",
+    "iv": "V4wjk2G6ejOVLqP6",
+    "ct": "pf75v5eabu365ywdpJWjcFeV1ctyvwRuS+RWV+oEuHrxVIVhu7Cvvd1tYZz6t+2YZ0Ep8khHWCc5bInOAm35KG5aTrWp7uEExAcnnV4flK0eZNHEbGoRoOlT5caIU6MLyVadJcUMmMhAszUK+kaGg3zf8J242cFh1gVSbZtJOgXE6MC8",
+    "createdAt": "2026-10-04T06:12:56.399Z",
+    "changedAt": "2026-10-04T06:12:56.401Z"
+  }
+}

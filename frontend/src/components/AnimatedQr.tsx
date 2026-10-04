@@ -79,7 +79,7 @@ export function UrScanner({ onPsbt, onClose }: { onPsbt: (psbtB64: string) => vo
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
   return (
     <div className="ur-scan" data-testid="ur-scanner">
-      {camera !== 'off' ? <video ref={video} className="ur-video" muted playsInline /> : <div className="ur-video off">Camera unavailable: paste the UR parts below</div>}
+      {camera !== 'off' ? <video ref={video} className="ur-video" muted playsInline /> : <div className="ur-video off">{window.isSecureContext === false ? 'The camera needs HTTPS (https://mynode.local:9331): paste the UR parts below' : 'Camera unavailable: paste the UR parts below'}</div>}
       <div className="ur-progress"><i style={{ width: `${Math.round(progress * 100)}%` }} /></div>
       <div className="muted small" role="status">{status}</div>
       <textarea rows={3} value={paste} onChange={(e) => setPaste(e.target.value)} placeholder="…or paste UR:CRYPTO-PSBT/… parts, one per line" spellCheck={false} />

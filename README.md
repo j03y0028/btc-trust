@@ -10,6 +10,7 @@ Bitcoin Core over JSON-RPC.
 > [!CAUTION]
 > **Testing only: regtest/signet. Not audited. Not for real funds.**
 > - Wallets, vaults, PSBT signing and messaging run on **regtest** (or signet) only. The backend refuses a mainnet wallet node.
+> - Works over plain-HTTP LAN addresses too (e.g. `http://192.168.1.x`). Browsers hide WebCrypto there, so the trustee keyring falls back to audited pure-JS AES-256-GCM (`@noble/ciphers`) in the same format. HTTPS (`https://mynode.local:9331`) is still recommended.
 > - On a myNode, mainnet is **read-only**. The app may call only 15 read-only RPC methods, enforced in code *and* by bitcoind `rpcwhitelist`.
 > - **Never import real keys or send real bitcoin to any address this app shows.** See [SECURITY.md](SECURITY.md).
 

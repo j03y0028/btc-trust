@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { deviceApi, deviceName, walletApi, type HwDevice, type HwStatus, type Wallet } from '../lib/api'
 import { navigate } from '../lib/router'
 import { KindBadge } from '../components/KindBadge'
+import { CopyButton } from '../components/CopyButton'
 
 export function Devices() {
   const [status, setStatus] = useState<HwStatus | null>(null)
@@ -10,7 +11,6 @@ export function Devices() {
   const [scanning, setScanning] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [xpubs, setXpubs] = useState<Record<string, string>>({})
-  const [copied, setCopied] = useState<string | null>(null)
 
   const scan = useCallback(async (refresh: boolean) => {
     setScanning(true)
@@ -84,7 +84,7 @@ export function Devices() {
                   <div className="xpub-box">
                     <span className="field-label">BIP48 multisig key (m/48h/1h/0h/2h)</span>
                     <code>{xpubs[d.fingerprint]}</code>
-                    <button className="btn small ghost" onClick={() => { navigator.clipboard?.writeText(xpubs[d.fingerprint!]); setCopied(d.fingerprint); setTimeout(() => setCopied(null), 1500) }}>{copied === d.fingerprint ? 'Copied ✓' : 'Copy'}</button>
+                    <CopyButton text={xpubs[d.fingerprint!]} />
                   </div>
                 )}
                 <div className="detail-actions">

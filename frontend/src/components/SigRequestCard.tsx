@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { btc, fmt } from '../lib/api'
 import { msgApi, seal, sendEnvelope, timeOf, type DirectoryEntry, type Identity, type SecretIdentity, type SigRequest } from '../lib/messaging'
 import { SigRing } from './SigRing'
+import { CopyButton } from './CopyButton'
 
 const STATUS: Record<SigRequest['status'], string> = { open: 'Awaiting signatures', ready: 'Ready to broadcast', broadcast: 'Broadcast' }
 
@@ -57,7 +58,7 @@ export function SigRequestCard({ walletId, req, me, dir, note, onUpdate }: {
           <div className="out fee"><span>Fee</span><strong>{req.fee !== null ? btc(req.fee) : '?'} BTC</strong></div>
           {mine?.kind === 'airgapped' && req.status === 'open' && (
             <div className="psbt-actions">
-              <button className="btn small ghost" onClick={() => navigator.clipboard?.writeText(req.psbt)}>Copy PSBT</button>
+              <CopyButton text={req.psbt} label="Copy PSBT" />
               <input value={paste} onChange={(e) => setPaste(e.target.value)} placeholder="Paste signed PSBT (base64)" />
               <button className="btn small" disabled={!paste.trim() || !!busy} onClick={merge}>Merge</button>
             </div>
