@@ -14,7 +14,7 @@ MYNODE_COMMIT="${MYNODE_COMMIT:-$(git ls-remote https://github.com/mynodebtc/myn
 REF="$REPO/build/mynode-ref-$MYNODE_COMMIT"
 BITCOIND="${BITCOIND:-bitcoind}"; CLI="${BITCOIN_CLI:-bitcoin-cli}"
 RPCPORT=18643; P2P=18644; APPPORT="${APPPORT:-19330}"
-IMAGE="${IMAGE:-btctrust:0.8.3}"
+IMAGE="${IMAGE:-btctrust:0.8.4}"
 NAME=btctrust-sim
 GW="$(ip -4 addr show docker0 | awk '/inet /{sub(/\/.*/,"",$2);print $2}')"   # = host.docker.internal
 DATADIR="$SIM/mnt/hdd/mynode/bitcoin"

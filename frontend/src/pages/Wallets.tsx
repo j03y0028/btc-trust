@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
-import { btc, initial, walletApi, walletKind, type Wallet } from '../lib/api'
+import { initial, walletApi, walletKind, type Wallet } from '../lib/api'
 import { navigate } from '../lib/router'
 import { Modal } from '../components/Modal'
 import { CreateWalletWizard, type WizardPreset } from '../components/CreateWalletWizard'
+import { Amount } from '../components/Amount'
 
 export function Wallets({ preset }: { preset?: WizardPreset } = {}) {
   const [wallets, setWallets] = useState<Wallet[] | null>(null)
@@ -12,15 +13,17 @@ export function Wallets({ preset }: { preset?: WizardPreset } = {}) {
   const load = () => walletApi.list().then((w) => { setWallets(w); setError(null) }).catch((e) => setError(e.message))
   useEffect(() => { load() }, [])
 
-  const total = (wallets ?? []).reduce((s, w) => s + (w.balance?.total ?? 0), 0)
+  // sum in integer sats (no float drift), back to BTC for display
+  const total = Number((wallets ?? []).reduce((s, w) => s + BigInt(Math.round((w.balance?.total ?? 0) * 1e8)), 0n)) / 1e8
+  const net = wallets?.[0]?.network ?? 'regtest'
 
   return (
     <main className="page">
       <section className="page-head">
         <div>
           <span className="eyebrow">Wallets</span>
-          <h2 className="page-title">{btc(total, 4)} <small>BTC</small></h2>
-          <p className="muted">Total across {wallets?.length ?? 0} wallet{wallets?.length === 1 ? '' : 's'} · regtest</p>
+          <h2 className="page-title"><Amount btc={total} digits={4} variant="title" network={net} testId="wallets-total" /></h2>
+          <p className="muted">Total across {wallets?.length ?? 0} wallet{wallets?.length === 1 ? '' : 's'} · {net}</p>
         </div>
         <button className="btn primary" onClick={() => setCreating(true)}>＋ New wallet</button>
       </section>
@@ -46,8 +49,8 @@ export function Wallets({ preset }: { preset?: WizardPreset } = {}) {
               {!w.canSign && !w.signable && w.type !== 'watchonly' && <span className="badge badge-planned">View only</span>}
             </div>
             <div className="wc-name">{w.name}</div>
-            <div className="wc-balance">{w.balance ? btc(w.balance.total, 4) : '—'} <small>BTC</small></div>
-            {w.balance && w.balance.immature > 0 && <div className="wc-sub muted">+{btc(w.balance.immature, 4)} immature</div>}
+            <div className="wc-balance">{w.balance ? <Amount btc={w.balance.total} digits={4} variant="card" interactive={false} network={w.network} /> : <>— <small>BTC</small></>}</div>
+            {w.balance && w.balance.immature > 0 && <div className="wc-sub muted">+<Amount btc={w.balance.immature} digits={4} interactive={false} /> immature</div>}
             <div className="wc-keys">
               {w.cosigners.slice(0, 15).map((c, j) => (
                 <span key={j} className={`key-dot kd-${c.kind}`} title={`${c.label} · ${c.fingerprint}`}>{initial(c.label)}</span>

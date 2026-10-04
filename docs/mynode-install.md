@@ -9,7 +9,7 @@
 ## What you need
 
 - A myNode (Raspberry Pi 4/5 = `aarch64`, or an x86_64 PC) on a recent release (Bitcoin Core 29.x is fine) with Docker running. myNode ships Docker for its Docker-based apps.
-- The release package from [GitHub Releases](https://github.com/j03y0028/btc-trust/releases/tag/v0.8.3). Step 1 downloads it directly on the myNode.
+- The release package from [GitHub Releases](https://github.com/j03y0028/btc-trust/releases/tag/v0.8.4). Step 1 downloads it directly on the myNode.
 - About 1 GB free on the myNode drive.
 - Port **9330** free (and 9331 for https). No stock myNode app uses either port.
 
@@ -33,29 +33,29 @@ uname -m      # x86_64 = x86 PC (e.g. Beelink mini PC) · aarch64 = Raspberry Pi
 
 ```bash
 cd ~
-wget https://github.com/j03y0028/btc-trust/releases/download/v0.8.3/btctrust-mynode-v0.8.3-x86_64.tar.gz
-wget https://github.com/j03y0028/btc-trust/releases/download/v0.8.3/btctrust-mynode-v0.8.3-x86_64.tar.gz.sha256
-sha256sum -c btctrust-mynode-v0.8.3-x86_64.tar.gz.sha256      # must print: OK
-tar xzf btctrust-mynode-v0.8.3-x86_64.tar.gz
+wget https://github.com/j03y0028/btc-trust/releases/download/v0.8.4/btctrust-mynode-v0.8.4-x86_64.tar.gz
+wget https://github.com/j03y0028/btc-trust/releases/download/v0.8.4/btctrust-mynode-v0.8.4-x86_64.tar.gz.sha256
+sha256sum -c btctrust-mynode-v0.8.4-x86_64.tar.gz.sha256      # must print: OK
+tar xzf btctrust-mynode-v0.8.4-x86_64.tar.gz
 ```
 
 **aarch64** (Raspberry Pi): use the full package (x86_64 + arm64 images), about 185 MB:
 
 ```bash
 cd ~
-wget https://github.com/j03y0028/btc-trust/releases/download/v0.8.3/btctrust-mynode-v0.8.3.tar.gz
-wget https://github.com/j03y0028/btc-trust/releases/download/v0.8.3/btctrust-mynode-v0.8.3.tar.gz.sha256
-sha256sum -c btctrust-mynode-v0.8.3.tar.gz.sha256             # must print: OK
-tar xzf btctrust-mynode-v0.8.3.tar.gz
+wget https://github.com/j03y0028/btc-trust/releases/download/v0.8.4/btctrust-mynode-v0.8.4.tar.gz
+wget https://github.com/j03y0028/btc-trust/releases/download/v0.8.4/btctrust-mynode-v0.8.4.tar.gz.sha256
+sha256sum -c btctrust-mynode-v0.8.4.tar.gz.sha256             # must print: OK
+tar xzf btctrust-mynode-v0.8.4.tar.gz
 ```
 
-Both packages unpack to `~/btctrust-mynode-v0.8.3/`. No `wget`? Use `curl -fLO <url>` instead.
+Both packages unpack to `~/btctrust-mynode-v0.8.4/`. No `wget`? Use `curl -fLO <url>` instead.
 To build the package yourself instead, run `scripts/package-mynode.sh` on a machine with Docker, then `scp` it over.
 
 ## 2. Run the installer (on the myNode)
 
 ```bash
-cd ~/btctrust-mynode-v0.8.3
+cd ~/btctrust-mynode-v0.8.4
 sudo ./install-mynode.sh
 ```
 
@@ -138,15 +138,15 @@ The header shows **read-only** next to the network badge. The banner reads "Chai
 
 ## Upgrading
 
-To move to a newer release (for example v0.8.2 → v0.8.3), download the new package and run its installer. On an x86_64 myNode (for a Raspberry Pi, use the full package URLs from step 1):
+To move to a newer release (for example v0.8.3 → v0.8.4), download the new package and run its installer. On an x86_64 myNode (for a Raspberry Pi, use the full package URLs from step 1):
 
 ```bash
 cd ~
-wget https://github.com/j03y0028/btc-trust/releases/download/v0.8.3/btctrust-mynode-v0.8.3-x86_64.tar.gz
-wget https://github.com/j03y0028/btc-trust/releases/download/v0.8.3/btctrust-mynode-v0.8.3-x86_64.tar.gz.sha256
-sha256sum -c btctrust-mynode-v0.8.3-x86_64.tar.gz.sha256      # must print: OK
-tar xzf btctrust-mynode-v0.8.3-x86_64.tar.gz
-cd btctrust-mynode-v0.8.3
+wget https://github.com/j03y0028/btc-trust/releases/download/v0.8.4/btctrust-mynode-v0.8.4-x86_64.tar.gz
+wget https://github.com/j03y0028/btc-trust/releases/download/v0.8.4/btctrust-mynode-v0.8.4-x86_64.tar.gz.sha256
+sha256sum -c btctrust-mynode-v0.8.4-x86_64.tar.gz.sha256      # must print: OK
+tar xzf btctrust-mynode-v0.8.4-x86_64.tar.gz
+cd btctrust-mynode-v0.8.4
 sudo ./install-mynode.sh --no-bitcoin-restart
 ```
 
@@ -159,7 +159,24 @@ What an upgrade keeps and changes:
 
 If you skip `--no-bitcoin-restart`, nothing bad happens either: the installer still sees that bitcoind already has the user and skips the restart.
 
-The downloaded `~/btctrust-mynode-v0.8.x` folders and `.tar.gz` files from older versions can be deleted afterwards (`rm -rf ~/btctrust-mynode-v0.8.2*`). Keep the folder of the version you run if you want its `uninstall-mynode.sh` handy.
+The downloaded `~/btctrust-mynode-v0.8.x` folders and `.tar.gz` files from older versions can be deleted afterwards (for example `rm -rf ~/btctrust-mynode-v0.8.3*`). Keep the folder of the version you run if you want its `uninstall-mynode.sh` handy.
+
+## Fiat prices (BTC → USD, EUR, …) and privacy
+
+Click any bitcoin amount on the Wallets pages to pick a currency: USD (default), EUR, GBP, CAD, AUD, JPY, CHF, MXN and 14 more. You can also switch between BTC and sats, or hide the fiat value. The choice is saved on the node (`/mnt/hdd/mynode/btctrust/app/settings.json`), so it follows your app login to any browser.
+
+- **Where prices come from:** the BTC Trust app on your myNode asks public price APIs. No API keys are used. Sources are tried in order: mempool.space, then Coinbase, Kraken, mempool.emzy.de and CoinGecko as fallbacks. Each is asked at most once a minute (60 s cache), with a 5 s timeout. A source that fails is skipped for 5 minutes.
+- **What is shown:** the source and time of the price. If every source is unreachable, the last price (up to 30 min old) is shown marked "last known". Otherwise the app shows **Price unavailable**, and amounts stay in bitcoin.
+- **Privacy:** your browser never contacts these sites (the app's Content-Security-Policy still allows only the app itself). No addresses, balances or wallet data are sent; a request only asks for "the BTC price". The request does go over the normal internet (clearnet) from your myNode's IP, not over Tor, even if myNode's Tor setting is on for bitcoind. The site sees your home IP asking for a BTC price about once a minute while a wallet page is open.
+- **Test coins:** wallets in this app are regtest test wallets. Their fiat value uses the real mainnet price for illustration only and is labelled *test coins · illustrative*; test bitcoin has no real value.
+- **Turn the price feed off** (no outside requests at all):
+
+  ```bash
+  cd ~/btctrust-mynode-v0.8.4
+  sudo ./install-mynode.sh --no-bitcoin-restart --price-feed=off
+  ```
+
+  Later installs and upgrades keep this choice; `--price-feed=on` turns it back on. Amounts then show only in BTC/sats, with "Price feed off".
 
 ## Recovering from a failed v0.8.1 install
 
@@ -169,15 +186,15 @@ On an x86_64 myNode (for a Raspberry Pi, use the full package URLs from step 1):
 
 ```bash
 cd ~
-wget https://github.com/j03y0028/btc-trust/releases/download/v0.8.3/btctrust-mynode-v0.8.3-x86_64.tar.gz
-wget https://github.com/j03y0028/btc-trust/releases/download/v0.8.3/btctrust-mynode-v0.8.3-x86_64.tar.gz.sha256
-sha256sum -c btctrust-mynode-v0.8.3-x86_64.tar.gz.sha256      # must print: OK
-tar xzf btctrust-mynode-v0.8.3-x86_64.tar.gz
-cd btctrust-mynode-v0.8.3
+wget https://github.com/j03y0028/btc-trust/releases/download/v0.8.4/btctrust-mynode-v0.8.4-x86_64.tar.gz
+wget https://github.com/j03y0028/btc-trust/releases/download/v0.8.4/btctrust-mynode-v0.8.4-x86_64.tar.gz.sha256
+sha256sum -c btctrust-mynode-v0.8.4-x86_64.tar.gz.sha256      # must print: OK
+tar xzf btctrust-mynode-v0.8.4-x86_64.tar.gz
+cd btctrust-mynode-v0.8.4
 sudo ./install-mynode.sh --no-bitcoin-restart
 ```
 
-No uninstall is needed first. The v0.8.3 installer replaces the broken app definition and keeps the existing passwords in `btctrust.env`. It leaves `btctrust_bitcoin.conf` byte-for-byte unchanged, so the RPC user bitcoind already loaded keeps working and bitcoind is not restarted. It then self-checks that user (getblockcount 200, getwalletinfo 403) and starts the app. If it prints "bitcoind was NOT restarted", run `sudo systemctl restart bitcoin` and then `sudo systemctl restart btctrust`.
+No uninstall is needed first. The v0.8.4 installer replaces the broken app definition and keeps the existing passwords in `btctrust.env`. It leaves `btctrust_bitcoin.conf` byte-for-byte unchanged, so the RPC user bitcoind already loaded keeps working and bitcoind is not restarted. It then self-checks that user (getblockcount 200, getwalletinfo 403) and starts the app. If it prints "bitcoind was NOT restarted", run `sudo systemctl restart bitcoin` and then `sudo systemctl restart btctrust`.
 
 ## Where things live
 
@@ -188,6 +205,7 @@ No uninstall is needed first. The v0.8.3 installer replaces the broken app defin
 | `/mnt/hdd/mynode/btctrust/btctrust.env` | settings and generated passwords (600) |
 | `/mnt/hdd/mynode/btctrust/app/` | app data: test wallets' metadata, encrypted vaults, messaging, daily snapshots, `auth.json` |
 | `/mnt/hdd/mynode/btctrust/testnode/` | the bundled regtest/signet node's data |
+| `/mnt/hdd/mynode/btctrust/app/settings.json` | display choice (BTC or sats, fiat currency) |
 | `/mnt/hdd/mynode/btctrust/app/deleted/` | test wallets you deleted in the app: their config, vault and messages are moved here, not erased |
 | `/mnt/hdd/mynode/settings/btctrust_bitcoin.conf` | the read-only RPC user |
 
@@ -204,14 +222,14 @@ grep "not allowed to call method" /mnt/hdd/mynode/bitcoin/debug.log | tail   # a
 ```
 
 - **Installer stopped with "myNode's app manager failed during 'init'":** it prints myNode's error line and the log path. With `'NoneType' object has no attribute 'replace'` you are running the v0.8.1 package; see [Recovering from a failed v0.8.1 install](#recovering-from-a-failed-v081-install).
-- **`Unit btctrust.service not found`:** myNode did not load the app. Re-run the v0.8.3 installer; it now stops at the first myNode error instead.
+- **`Unit btctrust.service not found`:** myNode did not load the app. Re-run the v0.8.4 installer; it now stops at the first myNode error instead.
 - **Dashboard says the mainnet node is unreachable:** check that bitcoind was restarted after install and that `grep includeconf /mnt/hdd/mynode/bitcoin/bitcoin.conf` shows the line.
 - **Errors mentioning `-32604` or 403:** something asked for a non-allowlisted RPC. That is the protection working; please report which page did it.
 
 ## Uninstall
 
 ```bash
-cd ~/btctrust-mynode-v0.8.3
+cd ~/btctrust-mynode-v0.8.4
 sudo ./uninstall-mynode.sh            # app, images, app definition, RPC user; KEEPS /mnt/hdd/mynode/btctrust
 sudo ./uninstall-mynode.sh --purge    # also deletes the app data (asks you to type DELETE)
 ```

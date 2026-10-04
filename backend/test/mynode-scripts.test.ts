@@ -194,18 +194,17 @@ describe('recovery from the v0.8.1 half-install (Joey\'s myNode)', () => {
   });
 });
 
-describe('upgrade v0.8.2 -> current (same steps as on a real myNode)', () => {
-  it('keeps btctrust.env passwords, the RPC user and app data; no bitcoind restart needed; myNode reinstall path', () => {
-    const old = join(tmp, 'v082'); mkdirSync(old);
-    const show = (path: string) => execFileSync('git', ['-C', REPO, 'show', `v0.8.2:${path}`], { encoding: 'utf8' });
+describe('upgrade from earlier releases -> current (same steps as on a real myNode)', () => {
+  it.each(['v0.8.2', 'v0.8.3'])('from %s: keeps btctrust.env (byte-identical), the RPC user and app data; no bitcoind restart needed; myNode reinstall path', (tag) => {
+    const old = join(tmp, tag); mkdirSync(old);
+    const show = (path: string) => execFileSync('git', ['-C', REPO, 'show', `${tag}:${path}`], { encoding: 'utf8' });
     writeFileSync(join(old, 'install-mynode.sh'), show('mynode/install-mynode.sh'));
     cpSync(join(pkg, 'btctrust'), join(old, 'btctrust'), { recursive: true });
     writeFileSync(join(old, 'btctrust/btctrust.json'), show('mynode/btctrust/btctrust.json'));
     const env = fakeManager({});
-    // the v0.8.2 manager writes v0.8.2 as the installed version
-    const v082 = { ...env, MYNODE_MANAGE_APPS: env.MYNODE_MANAGE_APPS };
-    writeFileSync(env.MYNODE_MANAGE_APPS, readFileSync(env.MYNODE_MANAGE_APPS, 'utf8').replace(/printf '%s' '[^']+'/, "printf '%s' 'v0.8.2'"));
-    const a = spawnSync('bash', [join(old, 'install-mynode.sh'), '--yes'], { encoding: 'utf8', env: { ...process.env, MYNODE_ROOT: root, MYNODE_SIM: '1', ...v082 } });
+    // the old manager writes the old version as the installed version
+    writeFileSync(env.MYNODE_MANAGE_APPS, readFileSync(env.MYNODE_MANAGE_APPS, 'utf8').replace(/printf '%s' '[^']+'/, `printf '%s' '${tag}'`));
+    const a = spawnSync('bash', [join(old, 'install-mynode.sh'), '--yes'], { encoding: 'utf8', env: { ...process.env, MYNODE_ROOT: root, MYNODE_SIM: '1', ...env } });
     expect(a.status, a.stderr + a.stdout).toBe(0);
     // app data written by v0.8.2 (wallet configs, login, test node chain)
     const data = join(root, 'mnt/hdd/mynode/btctrust');
@@ -228,6 +227,20 @@ describe('upgrade v0.8.2 -> current (same steps as on a real myNode)', () => {
     expect(calls().slice(-2)).toEqual(['init', 'reinstall btctrust']);
     const latest = JSON.parse(readFileSync(join(REPO, 'mynode/btctrust/btctrust.json'), 'utf8')).latest_version;
     expect(readFileSync(join(root, 'home/bitcoin/.mynode/btctrust_version'), 'utf8')).toBe(latest);
+  });
+  it('--price-feed=off is written to btctrust.env, kept on re-runs, and passed to the container; =on removes it', () => {
+    const data = join(root, 'mnt/hdd/mynode/btctrust');
+    expect(run('install-mynode.sh', ['--yes'], fakeManager({})).status).toBe(0);
+    expect(readFileSync(join(data, 'btctrust.env'), 'utf8')).not.toContain('PRICE_FEED');
+    expect(run('install-mynode.sh', ['--yes', '--price-feed=off'], fakeManager({})).status).toBe(0);
+    const off = readFileSync(join(data, 'btctrust.env'), 'utf8');
+    expect(off).toMatch(/^PRICE_FEED=off$/m);
+    expect(run('install-mynode.sh', ['--yes'], fakeManager({})).status).toBe(0);
+    expect(readFileSync(join(data, 'btctrust.env'), 'utf8')).toBe(off);
+    expect(run('install-mynode.sh', ['--yes', '--price-feed=on'], fakeManager({})).status).toBe(0);
+    expect(readFileSync(join(data, 'btctrust.env'), 'utf8')).not.toContain('PRICE_FEED');
+    expect(run('install-mynode.sh', ['--yes', '--price-feed=maybe'], fakeManager({})).status).toBe(2);
+    expect(readFileSync(join(REPO, 'mynode/btctrust/app_data/run.sh'), 'utf8')).toContain('-e PRICE_FEED="${PRICE_FEED:-on}"');
   });
 });
 

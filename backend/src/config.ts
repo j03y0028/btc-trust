@@ -45,6 +45,8 @@ export interface AppConfig {
   staticDir: string | null;
   /** Repo/app root (bundled white paper, git metadata). */
   appRoot: string;
+  /** BTC → fiat display prices (backend fetches public APIs; the browser never does). Optional for older test configs. */
+  prices?: { enabled: boolean; ttlMs: number; timeoutMs: number; order?: string[] };
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
@@ -113,5 +115,11 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     },
     staticDir: env.STATIC_DIR ?? null,
     appRoot: env.APP_ROOT ?? resolve(import.meta.dirname, '../..'),
+    prices: {
+      enabled: (env.PRICE_FEED ?? 'on') !== 'off',
+      ttlMs: Number(env.PRICE_CACHE_MS ?? 60_000),
+      timeoutMs: Number(env.PRICE_TIMEOUT_MS ?? 5_000),
+      ...(env.PRICE_SOURCES ? { order: env.PRICE_SOURCES.split(',').map((x) => x.trim()).filter(Boolean) } : {}),
+    },
   };
 }

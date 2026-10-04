@@ -16,7 +16,7 @@
         "SPLIT MODE: your node is only ever asked read-only questions (an allowlist of 15 RPC methods such as getblockchaininfo and getblock), enforced in the app and again by bitcoind's rpcwhitelist for a dedicated 'btctrust' RPC user.",
         "WALLETS ARE TEST-ONLY: wallets, PSBTs, the vault and messaging run on a separate bundled REGTEST (or signet) node with worthless test coins. Never send real bitcoin to addresses shown in this app."
     ],
-    "latest_version": "v0.8.3",
+    "latest_version": "v0.8.4",
     "linux_user": "btctrust",
     "supported_archs": [
         "aarch64",

@@ -7,6 +7,8 @@ import { STAGES } from './stages.js';
 import { WalletStore } from './store.js';
 import { WalletService } from './wallets.js';
 import { WalletAdmin } from './wallet-admin.js';
+import { CURRENCIES, PriceService, isCurrency } from './prices.js';
+import { SettingsStore } from './settings.js';
 import { HttpError, statusFor } from './errors.js';
 import { Faucet } from './faucet.js';
 import { HwiCliAdapter, type HwiAdapter } from './hwi.js';
@@ -44,7 +46,7 @@ export const walletRpcFor = (cfg: AppConfig): BitcoinRpc => (cfg.mode === 'split
 /** Route prefixes that belong to the wallet side (test chain); switched off entirely with WALLET_FEATURES=off. */
 const WALLET_PREFIXES = ['/api/wallets', '/api/devices', '/api/vaults', '/api/messaging', '/api/regtest'];
 
-export function createApp(cfg: AppConfig, rpc: BitcoinRpc = walletRpcFor(cfg), store = new WalletStore(cfg.dataDir, cfg.network), hwi: HwiAdapter | null = hwiFromConfig(cfg, rpc), timeline = new TimelineService(cfg), auth = new AuthService(cfg)) {
+export function createApp(cfg: AppConfig, rpc: BitcoinRpc = walletRpcFor(cfg), store = new WalletStore(cfg.dataDir, cfg.network), hwi: HwiAdapter | null = hwiFromConfig(cfg, rpc), timeline = new TimelineService(cfg), auth = new AuthService(cfg), prices = new PriceService(cfg.prices ?? {})) {
   const svc = new ChainService(rpc);
   const mainnetSvc = timeline.node ? new ChainService(timeline.node) : null;
   const devices = new DeviceService(hwi, cfg.network);
@@ -204,6 +206,20 @@ export function createApp(cfg: AppConfig, rpc: BitcoinRpc = walletRpcFor(cfg), s
   app.use('/api/vaults', vaultRouter(vault));
   app.use('/api/messaging', messagingRouter(messaging));
   // ---- Timeline & goals (mainnet data is read-only: public APIs or getblockchaininfo) ----
+  // ---- Display: BTC → fiat prices (backend proxy, cached) and the saved display choice ----
+  const settings = new SettingsStore(cfg.dataDir);
+  app.get('/api/prices/currencies', (_req, res) => {
+    res.json({ enabled: prices.enabled, currencies: CURRENCIES.map(([code, name]) => ({ code, name })), sources: prices.sources.map((s) => s.name) });
+  });
+  app.get('/api/prices', async (req, res) => {
+    const c = String(req.query.currency ?? 'USD').toUpperCase();
+    if (!isCurrency(c)) throw new HttpError(400, `Unsupported currency: ${c.slice(0, 10)}`);
+    res.setHeader('Cache-Control', 'no-store');
+    res.json(await prices.price(c));
+  });
+  app.get('/api/settings/display', (_req, res) => { res.json(settings.display()); });
+  app.put('/api/settings/display', (req, res) => { res.json(settings.setDisplay(req.body)); });
+
   app.use('/api', timelineRouter(timeline));
 
   // ---- Regtest helpers (disabled on every other network) ----

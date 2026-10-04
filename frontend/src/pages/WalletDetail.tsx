@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { btc, fmt, initial, walletApi, walletKind, type WalletDetail as WD } from '../lib/api'
+import { fmt, initial, walletApi, walletKind, type WalletDetail as WD } from '../lib/api'
 import { navigate } from '../lib/router'
 import { QrCode } from '../components/QrCode'
 import { DeviceRegistration } from '../components/DeviceRegistration'
@@ -8,6 +8,9 @@ import { SendFlow } from '../components/SendFlow'
 import { KindBadge } from '../components/KindBadge'
 import { WalletName } from '../components/WalletName'
 import { DangerZone } from '../components/DangerZone'
+import { Amount } from '../components/Amount'
+import { useDisplay } from '../lib/display'
+import { formatUnit, toSats } from '../lib/money'
 
 type Tab = 'activity' | 'utxos' | 'keys' | 'devices'
 
@@ -19,6 +22,9 @@ export function WalletDetail({ id }: { id: string }) {
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [copied, setCopied] = useState(false)
+  const display = useDisplay()
+  /** amount in the chosen unit, with its label */
+  const u = (btcAmount: number, digits: number) => `${formatUnit(toSats(btcAmount), display.unit, digits)} ${display.unit}`
   const [verify, setVerify] = useState<{ state: 'busy' | 'ok' | 'bad' | 'err'; text: string } | null>(null)
 
   const verifyOnDevice = async (cosigner: number) => {
@@ -59,11 +65,11 @@ export function WalletDetail({ id }: { id: string }) {
             <span className="muted small">{w.type === 'multisig' ? 'P2WSH · wsh(sortedmulti)' : w.type === 'singlesig' ? 'P2WPKH' : 'Watch-only'}</span>
           </div>
           <WalletName id={w.id} name={w.name} onRenamed={(name) => setW((cur) => (cur ? { ...cur, name } : cur))} />
-          <div className="detail-balance" data-testid="balance">{btc(w.balance.confirmed, 8)} <small>BTC</small></div>
+          <div className="detail-balance"><Amount btc={w.balance.confirmed} variant="hero" network={w.network} meta testId="balance" /></div>
           <div className="balance-split">
-            <span><i className="dot green" />Confirmed {btc(w.balance.confirmed, 4)}</span>
-            <span><i className="dot orange" />Pending {btc(w.balance.pending, 4)}</span>
-            <span><i className="dot violet" />Immature {btc(w.balance.immature, 4)}</span>
+            <span><i className="dot green" />Confirmed {u(w.balance.confirmed, 4)}</span>
+            <span><i className="dot orange" />Pending {u(w.balance.pending, 4)}</span>
+            <span><i className="dot violet" />Immature {u(w.balance.immature, 4)}</span>
           </div>
           <div className="quorum" data-testid="quorum">
             <div className="quorum-keys">
@@ -126,7 +132,7 @@ export function WalletDetail({ id }: { id: string }) {
                   {h.confirmations > 0 ? <span className="conf ok">{h.confirmations >= 6 ? '6+' : h.confirmations} conf</span> : <span className="conf pending">Pending</span>}
                   <span className="muted">{fmt.ago(h.time)}</span>
                 </div>
-                <div className={`tx-amt ${h.amount < 0 ? 'neg' : 'pos'}`}>{h.amount > 0 ? '+' : ''}{btc(h.amount, 8)}</div>
+                <div className={`tx-amt ${h.amount < 0 ? 'neg' : 'pos'}`}><Amount btc={h.amount} signed network={w.network} interactive={false} /></div>
               </li>
             ))}
           </ul>
@@ -136,8 +142,8 @@ export function WalletDetail({ id }: { id: string }) {
           <table className="utxo-table">
             <thead><tr><th>Outpoint</th><th>Address</th><th>Conf</th><th className="r">Amount</th></tr></thead>
             <tbody>
-              {w.utxos.map((u) => (
-                <tr key={`${u.txid}:${u.vout}`}><td><code>{fmt.hash(u.txid, 6)}:{u.vout}</code></td><td><code>{u.address.slice(0, 16)}…</code></td><td>{u.confirmations}</td><td className="r">{btc(u.amount, 8)}</td></tr>
+              {w.utxos.map((x) => (
+                <tr key={`${x.txid}:${x.vout}`}><td><code>{fmt.hash(x.txid, 6)}:{x.vout}</code></td><td><code>{x.address.slice(0, 16)}…</code></td><td>{x.confirmations}</td><td className="r">{u(x.amount, 8)}</td></tr>
               ))}
               {w.utxos.length === 0 && <tr><td colSpan={4} className="muted">No unspent outputs.</td></tr>}
             </tbody>

@@ -54,5 +54,14 @@ if (process.argv[2] === 'before') {
   ok(del.status === 200, 'delete of a throwaway test wallet', JSON.stringify(del.body).slice(0, 200));
   ok((await api(`/api/wallets/${tid}`)).status === 404, 'deleted wallet is gone (404)');
   ok((await api(`/api/wallets/${st.id}`)).status === 200, 'other wallet untouched by the delete');
+  if (process.env.CHECK_PRICES !== '0') {
+    const p = await api('/api/prices?currency=USD');
+    ok(p.status === 200 && (p.body.available === true ? /^[1-9]\d+$/.test(p.body.priceE8) : typeof p.body.error === 'string'), 'price endpoint answers from inside the container', JSON.stringify(p.body).slice(0, 160));
+    if (p.body.available) console.log(`      1 BTC = ${p.body.price} USD via ${p.body.source}`);
+    ok((await api('/api/settings/display')).body?.fiat === 'USD', 'display defaults to USD after upgrade');
+    ok((await api('/api/settings/display', { method: 'PUT', json: { fiat: 'EUR', unit: 'sats' } })).status === 200, 'display choice saved');
+    ok((await api('/api/settings/display', { method: 'PUT', json: { fiat: 'EUR' }, headers: { origin: 'https://evil.example' } })).status === 403, 'cross-site settings write blocked');
+    ok((await api('/api/prices?currency=XYZ')).status === 400, 'unknown currency refused');
+  }
 }
 console.log(fail ? `${fail} FAILED` : 'ALL PASSED'); process.exit(fail ? 1 : 0);

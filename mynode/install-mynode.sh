@@ -17,6 +17,7 @@
 #           --no-bitcoin-restart  skip step 4 (restart bitcoind yourself later: sudo systemctl restart bitcoin)
 #           --wallets=regtest|signet|off   chain for the TEST-ONLY wallet features (default regtest)
 #           --port=N              HTTP port (default 9330; https via myNode nginx on 9331)
+#           --price-feed=on|off   BTC -> fiat display prices from public APIs (default on; the last choice is kept)
 # Simulation/testing (scripts/mynode-sim.sh):  MYNODE_ROOT=/tmp/fake-root MYNODE_SIM=1
 #           [MYNODE_MANAGE_APPS=/path/to/fake-mynode-manage-apps  also runs the app-manager steps in simulation]
 set -euo pipefail
@@ -27,19 +28,21 @@ SIM="${MYNODE_SIM:-0}"
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 MANAGE="${MYNODE_MANAGE_APPS:-mynode-manage-apps}"
 USE_MANAGE=1; [ "$SIM" = 1 ] && [ -z "${MYNODE_MANAGE_APPS:-}" ] && USE_MANAGE=0
-YES=0; RESTART=1; WALLETS=regtest; PORT=9330
+YES=0; RESTART=1; WALLETS=regtest; PORT=9330; PRICE_FEED_ARG=
 for a in "$@"; do
     case "$a" in
         --yes|-y) YES=1 ;;
         --no-bitcoin-restart) RESTART=0 ;;
         --wallets=*) WALLETS="${a#*=}" ;;
         --port=*) PORT="${a#*=}" ;;
-        -h|--help) sed -n '2,22p' "$0"; exit 0 ;;
+        --price-feed=*) PRICE_FEED_ARG="${a#*=}" ;;
+        -h|--help) sed -n '2,23p' "$0"; exit 0 ;;
         *) echo "unknown option: $a" >&2; exit 2 ;;
     esac
 done
 case "$WALLETS" in regtest|signet|off) ;; *) echo "--wallets must be regtest, signet or off (never mainnet)" >&2; exit 2 ;; esac
 [[ "$PORT" =~ ^[0-9]+$ ]] || { echo "--port must be a number" >&2; exit 2; }
+case "$PRICE_FEED_ARG" in ''|on|off) ;; *) echo "--price-feed must be on or off" >&2; exit 2 ;; esac
 
 APPS_DIR="$ROOT/usr/share/mynode_apps"
 SETTINGS="$ROOT/mnt/hdd/mynode/settings"
@@ -189,6 +192,7 @@ TZ_NAME="$(cat /etc/timezone 2>/dev/null || true)"; TZ_NAME="${TZ_NAME:-UTC}"
 HOSTS="mynode.local,mynode"
 H="$(hostname 2>/dev/null || true)"; [ -n "$H" ] && HOSTS="$HOSTS,$H,$H.local"
 EXTRA_HOSTS="$(envget API_ALLOWED_HOSTS_EXTRA)"; [ -n "$EXTRA_HOSTS" ] && HOSTS="$HOSTS,$EXTRA_HOSTS"
+PRICE_FEED="${PRICE_FEED_ARG:-$(envget PRICE_FEED)}"   # kept from the last install unless --price-feed= is given
 umask 077
 cat > "$ENV_FILE" <<ENV
 # BTC Trust settings (secrets - keep mode 600). Re-running install-mynode.sh keeps the passwords.
@@ -205,6 +209,8 @@ API_ALLOWED_HOSTS=$HOSTS
 API_ALLOWED_HOSTS_EXTRA=$EXTRA_HOSTS
 SNAPSHOT_TZ=$TZ_NAME
 ENV
+# default (on) adds no line, so upgrades leave btctrust.env byte-identical
+if [ "$PRICE_FEED" = off ]; then echo "PRICE_FEED=off" >> "$ENV_FILE"; fi
 umask 022
 if id "$APP" >/dev/null 2>&1; then chown -R "$APP:$APP" "$DATA"; fi
 chmod 700 "$DATA"; chmod 600 "$ENV_FILE"

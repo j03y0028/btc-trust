@@ -60,6 +60,7 @@ docker create --name "$APP" --user "$USERSPEC" \
     -e MAINNET_RPC_EXPECT_CHAIN="${MAINNET_RPC_EXPECT_CHAIN:-main}" \
     -e API_ALLOWED_HOSTS="${API_ALLOWED_HOSTS:-mynode.local,mynode}" \
     -e SNAPSHOT_TZ="${SNAPSHOT_TZ:-}" -e MAINNET_SNAPSHOTS="${MAINNET_SNAPSHOTS:-true}" \
+    -e PRICE_FEED="${PRICE_FEED:-on}" \
     "${WALLET_ENV[@]}" \
     "$IMAGE" >/dev/null
 if [ "$WALLET_FEATURES" != off ]; then docker network connect "$NET" "$APP"; fi
